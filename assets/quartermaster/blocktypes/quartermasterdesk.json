@@ -9,31 +9,31 @@
     { "name": "HorizontalOrientable", "properties": { "dropBlockFace": "north" } }
   ],
   "textures": {
-    "wood": { "base": "game:block/wood/debarked/oak" },
-    "woodtop": { "base": "game:block/wood/debarked/birch" },
-    "bookcover": { "base": "game:block/wood/debarked/walnut" },
-    "pages": { "base": "game:block/wood/debarked/birch" },
-    "metal": { "base": "game:block/metal/plate/copper" }
+    "ceramic":    { "base": "game:block/clay/ceramic" },
+    "copper":     { "base": "game:block/metal/ingot/copper" },
+    "iron":       { "base": "game:block/metal/ingot/iron" },
+    "aged":       { "base": "game:block/wood/debarked/aged" },
+    "schematic2": { "base": "game:item/lore/schematic2" },
+    "feather":    { "base": "game:item/resource/feather" }
   },
   "shapeByType": {
-    "*-north": { "base": "quartermaster:block/quartermasterdesk", "rotateY": 180 },
-    "*-east":  { "base": "quartermaster:block/quartermasterdesk", "rotateY": 90 },
-    "*-south": { "base": "quartermaster:block/quartermasterdesk", "rotateY": 0 },
-    "*-west":  { "base": "quartermaster:block/quartermasterdesk", "rotateY": 270 }
+    "*-north": { "base": "game:block/clutter/drafting-table-stuff", "rotateY": 0 },
+    "*-east":  { "base": "game:block/clutter/drafting-table-stuff", "rotateY": 270 },
+    "*-south": { "base": "game:block/clutter/drafting-table-stuff", "rotateY": 180 },
+    "*-west":  { "base": "game:block/clutter/drafting-table-stuff", "rotateY": 90 }
   },
   "creativeinventory": { "general": ["*-north"] },
+  "guiTransform": {
+    "rotate": false,
+    "rotation": { "x": -22.6, "y": -144, "z": 0 },
+    "origin": { "x": 0.5, "y": 0.7, "z": 0.5 }
+  },
   "maxstacksize": 1,
   "lightAbsorption": 0,
   "sidesolid": { "all": false },
   "sideopaque": { "all": false },
-  "collisionbox": {
-    "x1": 0.1875, "y1": 0.0, "z1": 0.1875,
-    "x2": 0.8125, "y2": 0.75, "z2": 0.8125
-  },
-  "selectionbox": {
-    "x1": 0.1875, "y1": 0.0, "z1": 0.1875,
-    "x2": 0.8125, "y2": 0.75, "z2": 0.8125
-  },
+  "collisionbox": { "x1": 0.0, "y1": 0.0, "z1": 0.15, "x2": 1.0, "y2": 1.0, "z2": 0.9 },
+  "selectionbox": { "x1": 0.0, "y1": 0.0, "z1": 0.15, "x2": 1.0, "y2": 1.0, "z2": 0.9 },
   "materialDensity": 600,
   "sounds": {
     "place": "game:block/planks",
