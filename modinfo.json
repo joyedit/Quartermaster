@@ -1,0 +1,13 @@
+{
+  "type": "code",
+  "modid": "quartermaster",
+  "name": "Quartermaster",
+  "version": "1.0.0",
+  "authors": ["Feyd"],
+  "description": "A remote inventory-management station for nearby containers, tool racks, display cases, and shelves. Place a Quartermaster's Desk anywhere, then interact to browse, search, and filter everything stored within range by category. Withdraw items straight into your inventory, deposit items back into storage, or middle-click an item to locate its containers with blue markers and floating text labels visible through walls. Set LocateOnly in the config for a read-only station. Back up your world before relying on any storage-moving feature.",
+  "iconPath": "modicon.png",
+  "side": "universal",
+  "dependencies": {
+    "game": ""
+  }
+}

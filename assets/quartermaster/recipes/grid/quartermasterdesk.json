@@ -1,0 +1,14 @@
+[
+  {
+    "ingredientPattern": "SPC, B , B ",
+    "ingredients": {
+      "S": { "type": "item", "code": "game:chisel-*", "isTool": true },
+      "P": { "type": "item", "code": "game:paper-parchment" },
+      "C": { "type": "item", "code": "game:charcoal" },
+      "B": { "type": "block", "code": "game:planks-*" }
+    },
+    "width": 3,
+    "height": 3,
+    "output": { "type": "block", "code": "quartermaster:quartermasterdesk-north" }
+  }
+]

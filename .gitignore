@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+
+# Packaged mod artifacts
+*.zip
+
+# Local version backups kept on disk (not tracked)
+1.5.0/
+*.old
+
+# pCloud sync conflict artifacts (literal "[conflicted]" in the name)
+*\[conflicted\]*
+
+# Claude local settings
+.claude/settings.local.json
+
+# Editor / OS cruft
+*.user
+*.suo
+.vs/
+.DS_Store
