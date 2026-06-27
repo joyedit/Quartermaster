@@ -1,0 +1,25 @@
+{
+  "block-quartermasterdesk": "Quartermaster's Desk",
+  "block-quartermasterdesk-north": "Quartermaster's Desk",
+  "block-quartermasterdesk-east": "Quartermaster's Desk",
+  "block-quartermasterdesk-south": "Quartermaster's Desk",
+  "block-quartermasterdesk-west": "Quartermaster's Desk",
+
+  "quartermaster-hb-overview-title": "What it does",
+  "quartermaster-hb-overview-text": "The Quartermaster's Desk is a remote storage terminal. Place it anywhere in your base, then look at it and press the Quartermaster hotkey (J by default) or right-click it to open the ledger. The ledger lists everything stored in nearby chests, vessels, crates, barrels, tool racks, display cases, and shelves — so you can browse, search, and manage your whole stockpile without opening a single container.",
+
+  "quartermaster-hb-browse-title": "Browse, search & filter",
+  "quartermaster-hb-browse-text": "Use the search bar to filter items by name in real time. Toggle any combination of category filters (Food, Tools, Fuel, Wood, Wearables, Ores & Metals, Building) to narrow the grid; with none selected, everything is shown. Identical items from different containers are combined into one entry showing the total count. The grid is paginated at 90 items per page — use Prev/Next to navigate.",
+
+  "quartermaster-hb-withdraw-title": "Withdraw",
+  "quartermaster-hb-withdraw-text": "Pull items from any nearby container straight into your inventory:\n• Left-click — withdraw one stack\n• Right-click — withdraw a single item\n• Shift+click — withdraw all of that item, gathered from every container at once\nWithdrawals are loss-free: items leave storage only once your inventory actually accepts them.",
+
+  "quartermaster-hb-deposit-title": "Deposit",
+  "quartermaster-hb-deposit-text": "Put items away just as easily:\n• Hold an item and left-click the Deposit cell to store the whole stack (right-click stores one)\n• Click Deposit All to empty your backpack bags into storage — your equipped bags and hotbar are left untouched\nDeposits flow into chests and trunks only (never display racks or personal containers). If storage is full nothing is lost — the leftover stays with you and chat tells you how much couldn't be stored.",
+
+  "quartermaster-hb-locate-title": "Locate",
+  "quartermaster-hb-locate-text": "Middle-click any item to close the ledger and highlight the containers holding it, with blue markers, floating text labels visible through walls, and temporary map waypoints (up to 20 locations). Labels fade out between 20–40 blocks. Right-click a highlighted block to dismiss it, or open a container to clear its markers automatically.",
+
+  "quartermaster-hb-range-title": "Scan range",
+  "quartermaster-hb-range-text": "By default the desk scans a 5×5 area of chunks (~160 blocks across) centered on your chunk, and roughly the 32-block vertical layer you're standing in. Items stored well above or below you may not appear — move closer or raise VerticalRange. Processing stations (firepits, ovens, forges, querns, anvils, etc.) are deliberately skipped. Scan range is configurable in ModConfig/QuartermasterConfig.json."
+}

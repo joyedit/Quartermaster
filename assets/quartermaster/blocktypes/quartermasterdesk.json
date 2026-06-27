@@ -1,0 +1,54 @@
+{
+  "code": "quartermasterdesk",
+  "class": "BlockQuartermasterDesk",
+  "blockmaterial": "Wood",
+  "variantgroups": [
+    { "code": "side", "loadFromProperties": "game:abstract/horizontalorientation" }
+  ],
+  "behaviors": [
+    { "name": "HorizontalOrientable", "properties": { "dropBlockFace": "north" } }
+  ],
+  "textures": {
+    "wood": { "base": "game:block/wood/debarked/oak" },
+    "woodtop": { "base": "game:block/wood/debarked/birch" },
+    "bookcover": { "base": "game:block/wood/debarked/walnut" },
+    "pages": { "base": "game:block/wood/debarked/birch" },
+    "metal": { "base": "game:block/metal/plate/copper" }
+  },
+  "shapeByType": {
+    "*-north": { "base": "quartermaster:block/quartermasterdesk", "rotateY": 180 },
+    "*-east":  { "base": "quartermaster:block/quartermasterdesk", "rotateY": 90 },
+    "*-south": { "base": "quartermaster:block/quartermasterdesk", "rotateY": 0 },
+    "*-west":  { "base": "quartermaster:block/quartermasterdesk", "rotateY": 270 }
+  },
+  "creativeinventory": { "general": ["*-north"] },
+  "maxstacksize": 1,
+  "lightAbsorption": 0,
+  "sidesolid": { "all": false },
+  "sideopaque": { "all": false },
+  "collisionbox": {
+    "x1": 0.1875, "y1": 0.0, "z1": 0.1875,
+    "x2": 0.8125, "y2": 0.75, "z2": 0.8125
+  },
+  "selectionbox": {
+    "x1": 0.1875, "y1": 0.0, "z1": 0.1875,
+    "x2": 0.8125, "y2": 0.75, "z2": 0.8125
+  },
+  "materialDensity": 600,
+  "sounds": {
+    "place": "game:block/planks",
+    "break": "game:block/planks"
+  },
+  "attributes": {
+    "handbook": {
+      "extraSections": [
+        { "title": "quartermaster:quartermaster-hb-overview-title", "text": "quartermaster:quartermaster-hb-overview-text" },
+        { "title": "quartermaster:quartermaster-hb-browse-title", "text": "quartermaster:quartermaster-hb-browse-text" },
+        { "title": "quartermaster:quartermaster-hb-withdraw-title", "text": "quartermaster:quartermaster-hb-withdraw-text" },
+        { "title": "quartermaster:quartermaster-hb-deposit-title", "text": "quartermaster:quartermaster-hb-deposit-text" },
+        { "title": "quartermaster:quartermaster-hb-locate-title", "text": "quartermaster:quartermaster-hb-locate-text" },
+        { "title": "quartermaster:quartermaster-hb-range-title", "text": "quartermaster:quartermaster-hb-range-text" }
+      ]
+    }
+  }
+}
