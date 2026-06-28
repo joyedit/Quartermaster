@@ -25,6 +25,8 @@ namespace Quartermaster
         public string Code;
         public int Count;
         public string Type;
+        public string VariantType;
+        public string Material;
         public List<SimplePos> Locations = new List<SimplePos>();
     }
 
@@ -35,8 +37,10 @@ namespace Quartermaster
     public class PacketWithdraw
     {
         public string Code;
-        public string Type;   // "Block" or "Item"
-        public int Mode;      // 0 = one stack, 1 = single item, 2 = all
+        public string Type;        // "Block" or "Item"
+        public string VariantType; // itemstack "type" attribute (decorative chests, clutter)
+        public string Material;    // itemstack "material" attribute
+        public int Mode;           // 0 = one stack, 1 = single item, 2 = all
     }
 
     [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
@@ -114,6 +118,10 @@ namespace Quartermaster
                     if (collectible != null)
                     {
                         ItemStack stack = new ItemStack(collectible, dto.Count);
+                        // Attribute-variant blocks (decorative chests, clutter) share one code;
+                        // reapply type/material so the correct name + icon show.
+                        if (!string.IsNullOrEmpty(dto.VariantType)) stack.Attributes.SetString("type", dto.VariantType);
+                        if (!string.IsNullOrEmpty(dto.Material)) stack.Attributes.SetString("material", dto.Material);
                         List<BlockPos> locs = dto.Locations.Select(p => new BlockPos(p.X, p.Y, p.Z)).ToList();
                         allEntries.Add(new QuartermasterEntry() { Stack = stack, Locations = locs, Category = ClassifyCollectible(collectible) });
                     }
@@ -456,6 +464,8 @@ namespace Quartermaster
                         {
                             Code = entry.Stack.Collectible.Code.ToString(),
                             Type = entry.Stack.Class.ToString(),
+                            VariantType = entry.Stack.Attributes?.GetString("type"),
+                            Material = entry.Stack.Attributes?.GetString("material"),
                             Mode = mode
                         });
                     }
