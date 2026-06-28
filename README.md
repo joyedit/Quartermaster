@@ -67,6 +67,7 @@ Server config at `ModConfig/QuartermasterConfig.json`:
 | `ChunkRadius` | `2` | Horizontal scan radius in **chunks** (1 chunk = 32 blocks). |
 | `VerticalRange` | `5` | Vertical range in blocks above/below the player. |
 | `LocateOnly` | `false` | When `true`, the desk is **read-only** — browse/search/filter/locate work, but withdraw and deposit are disabled. Enforced server-side, so it applies to everyone on the world. |
+| `HonorClaims` | `true` | When `true`, containers inside a land claim you don't have permission to use are hidden and inaccessible. Owners/granted players and unclaimed land are unaffected. |
 
 The scan is centered on the player and chunk-granular; containers in chunks that aren't
 currently loaded are not included.

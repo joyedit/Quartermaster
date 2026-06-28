@@ -249,6 +249,8 @@ namespace Quartermaster
                             // firepit, ore in a bloomery, a workitem on an anvil, etc.).
                             if (IsProcessingDevice(be)) continue;
                             if (predicate != null && !predicate(be)) continue;
+                            // Honor land claims: skip containers the player isn't allowed to use.
+                            if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;
 
                             IInventory inv = GetInventory(be);
                             if (inv != null)
@@ -283,6 +285,16 @@ namespace Quartermaster
         // anvil, grain in a quern. These must never appear in the ledger or be withdrawable —
         // pulling from them removes the item from an active device (destructive). `is` checks
         // also catch modded subclasses. Barrels are intentionally NOT excluded (real storage).
+        // Land-claim check: true if the player may USE (open) a block at pos — owners and
+        // granted players/groups pass, everyone else is denied. Lets the remote terminal honor
+        // claims by skipping containers the player couldn't access by hand. Unclaimed land and
+        // single-player return Granted, so there's no behavior change where claims aren't used.
+        private static bool HasClaimAccess(IServerPlayer player, BlockPos pos)
+        {
+            return player.Entity.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.Use)
+                == EnumWorldAccessResponse.Granted;
+        }
+
         private static bool IsProcessingDevice(BlockEntity be)
         {
             return be is BlockEntityFirepit
