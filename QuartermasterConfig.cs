@@ -12,5 +12,10 @@ namespace Quartermaster
         // but withdraw and deposit are disabled. Enforced server-side, so a modified client
         // still cannot move items. The client UI hides the deposit controls.
         public bool LocateOnly { get; set; } = false;
+
+        // When true, the desk honors land claims: containers the player isn't allowed to use
+        // (e.g. inside someone else's claim) are hidden and can't be accessed. Owners/granted
+        // players and unclaimed land are unaffected. Defers to the game's own claim permissions.
+        public bool HonorClaims { get; set; } = true;
     }
 }

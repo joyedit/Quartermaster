@@ -16,6 +16,7 @@ Quartermaster adds a single craftable block — the **Quartermaster's Desk** —
   - Shift+click — all of that item, gathered from every container at once
 - **Deposit just as fast.** Drop a held item on the Deposit cell (right-click stores one), or hit **Deposit All** to empty your backpack bags into storage. Your worn bags and hotbar are never touched.
 - **Locate anything.** Middle-click an item to highlight every container holding it — blue block markers, floating labels you can read through walls, and temporary map waypoints.
+- **Respects land claims.** On a claimed server it only reaches containers you're actually allowed to use — others' claimed chests stay private.
 - **Place it anywhere.** No foundation requirement.
 
 ## Built to be safe
@@ -45,6 +46,7 @@ The chisel is used as a tool (not consumed); the nails and ink & quill are consu
 - **`ChunkRadius`** (default `2`) — horizontal scan radius in chunks (1 chunk = 32 blocks).
 - **`VerticalRange`** (default `5`) — vertical range in blocks above/below the player.
 - **`LocateOnly`** (default `false`) — read-only mode; disables withdraw and deposit, server-enforced.
+- **`HonorClaims`** (default `true`) — respects land claims; containers you don't have permission to use are hidden and inaccessible.
 
 ## Looking for something simpler?
 

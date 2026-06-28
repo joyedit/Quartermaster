@@ -2,6 +2,10 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.6
+### Added
+- **Land-claim support.** The desk now honors land claims: containers inside a claim you don't have permission to use are hidden and can't be accessed (browse/withdraw/deposit/locate). Owners, granted players/groups, and unclaimed land are unaffected. Toggle with the `HonorClaims` config option (default `true`).
+
 ## v1.0.5
 ### Changed
 - Updated the crafting recipe. The Quartermaster's Desk now also requires **metal nails & strips** and an **ink and quill**, in addition to the chisel, parchment, charcoal, and planks.
