@@ -47,13 +47,15 @@ Quartermaster's Desk (3×3 grid):
 
 ```
 chisel  paper   charcoal
-        planks
+nails   planks  ink & quill
         planks
 ```
 
 - `chisel` — any chisel (used as a tool; not consumed)
 - `paper` — 1× parchment paper
 - `charcoal` — 1× charcoal
+- `nails` — 1× metal nails & strips (any metal)
+- `ink & quill` — 1× ink and quill
 - `planks` — 2× planks (any wood)
 
 ## Configuration
