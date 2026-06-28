@@ -1,10 +1,12 @@
 [
   {
-    "ingredientPattern": "SPC, B , B ",
+    "ingredientPattern": "SPC,NBQ, B ",
     "ingredients": {
       "S": { "type": "item", "code": "game:chisel-*", "isTool": true },
       "P": { "type": "item", "code": "game:paper-parchment" },
       "C": { "type": "item", "code": "game:charcoal" },
+      "N": { "type": "item", "code": "game:metalnailsandstrips-*" },
+      "Q": { "type": "item", "code": "game:inkandquill" },
       "B": { "type": "block", "code": "game:planks-*" }
     },
     "width": 3,
