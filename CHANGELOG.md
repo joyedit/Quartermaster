@@ -2,6 +2,10 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.7
+### Fixed
+- Stone coffins are no longer scanned. Iron plates and charcoal packed into a stone coffin during cementation (steel-making) were treated as ordinary storage — they could appear in the ledger and even be withdrawn mid-process, ruining the burn. The coffin is now excluded like other processing devices (firepit, bloomery, forge, oven, etc.).
+
 ## v1.0.6
 ### Added
 - **Land-claim support.** The desk now honors land claims: containers inside a claim you don't have permission to use are hidden and can't be accessed (browse/withdraw/deposit/locate). Owners, granted players/groups, and unclaimed land are unaffected. Toggle with the `HonorClaims` config option (default `true`).

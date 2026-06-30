@@ -282,7 +282,8 @@ namespace Quartermaster
 
         // Work-station / processing block entities hold items mid-process, not in storage:
         // a cooking pot on a firepit, ore in a bloomery, metal in a forge, a workitem on an
-        // anvil, grain in a quern. These must never appear in the ledger or be withdrawable —
+        // anvil, grain in a quern, or iron plates packed in a stone coffin mid-cementation.
+        // These must never appear in the ledger or be withdrawable —
         // pulling from them removes the item from an active device (destructive). `is` checks
         // also catch modded subclasses. Barrels are intentionally NOT excluded (real storage).
         // Land-claim check: true if the player may USE (open) a block at pos — owners and
@@ -304,6 +305,7 @@ namespace Quartermaster
                 || be is BlockEntityQuern
                 || be is BlockEntityStove
                 || be is BlockEntityBoiler
+                || be is BlockEntityStoneCoffin
                 || be is BlockEntityAnvil;
         }
 
