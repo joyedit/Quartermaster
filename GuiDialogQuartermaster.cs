@@ -4,6 +4,7 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Quartermaster
@@ -26,7 +27,11 @@ namespace Quartermaster
         public int Count;
         public string Type;
         public string VariantType;
+        public string Variant;
         public string Material;
+        // Full attribute tree of a representative stack, so attribute-driven blocks
+        // (clutter, bookshelves, etc.) render with the exact appearance they had in storage.
+        public byte[] AttributesData;
         public List<SimplePos> Locations = new List<SimplePos>();
     }
 
@@ -39,6 +44,7 @@ namespace Quartermaster
         public string Code;
         public string Type;        // "Block" or "Item"
         public string VariantType; // itemstack "type" attribute (decorative chests, clutter)
+        public string Variant;     // itemstack "variant" attribute (clutter bookshelves)
         public string Material;    // itemstack "material" attribute
         public int Mode;           // 0 = one stack, 1 = single item, 2 = all
     }
@@ -59,7 +65,10 @@ namespace Quartermaster
         Wood      = 8,
         Wearables = 16,
         Metals    = 32,
-        Building  = 64
+        Building  = 64,
+        Plants    = 128,
+        Decor     = 256,
+        Powders   = 512
     }
 
     public class QuartermasterEntry
@@ -118,10 +127,17 @@ namespace Quartermaster
                     if (collectible != null)
                     {
                         ItemStack stack = new ItemStack(collectible, dto.Count);
-                        // Attribute-variant blocks (decorative chests, clutter) share one code;
-                        // reapply type/material so the correct name + icon show.
-                        if (!string.IsNullOrEmpty(dto.VariantType)) stack.Attributes.SetString("type", dto.VariantType);
-                        if (!string.IsNullOrEmpty(dto.Material)) stack.Attributes.SetString("material", dto.Material);
+                        // Attribute-variant blocks (decorative chests, clutter, bookshelves) share
+                        // one code and encode their appearance in itemstack attributes. Restore the
+                        // full attribute tree of a representative stack so the correct name, icon,
+                        // and mesh render (a bookshelf's "variant", a chest's "type", etc.).
+                        if (dto.AttributesData != null && dto.AttributesData.Length > 0)
+                            stack.Attributes = TreeAttribute.CreateFromBytes(dto.AttributesData);
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(dto.VariantType)) stack.Attributes.SetString("type", dto.VariantType);
+                            if (!string.IsNullOrEmpty(dto.Material)) stack.Attributes.SetString("material", dto.Material);
+                        }
                         List<BlockPos> locs = dto.Locations.Select(p => new BlockPos(p.X, p.Y, p.Z)).ToList();
                         allEntries.Add(new QuartermasterEntry() { Stack = stack, Locations = locs, Category = ClassifyCollectible(collectible) });
                     }
@@ -164,6 +180,30 @@ namespace Quartermaster
         {
             "arrow", "bullets", "club", "spear", "javelin", "sword",
             "dagger", "mace", "halberd", "crossbow", "bolt"
+        };
+
+        // Plants: growing/harvestable flora and their propagules. Living plant blocks
+        // (flowers, grass, ferns, mushrooms, reeds, vines) already match via the Plant/Leaves
+        // block material; these catch the item forms and saplings, which aren't Plant-material
+        // blocks. "seeds" covers "seeds-*"; mushroom items also gain the Food flag separately.
+        private static readonly string[] PlantCodeParts =
+        {
+            "seeds", "sapling", "flower", "mushroom", "cutting",
+            "bamboo", "papyrus", "cattail", "reedmace"
+        };
+
+        // Decor: purely decorative, non-functional pieces — paintings/pictures, tapestries,
+        // and the decorative "clutter" blocks (which share a code and vary by "type").
+        private static readonly string[] DecorCodeParts =
+        {
+            "painting", "picture", "tapestry", "clutter"
+        };
+
+        // Powders: milled/crushed/pulverized substances (flour, crushed ore, bonemeal-style
+        // powders). Flour is anchored so it doesn't catch unrelated codes.
+        private static readonly string[] PowderCodeParts =
+        {
+            "powder", "crushed", "pulverized"
         };
 
         // Classifies a collectible into one or more categories. Food/Tools/Wearables come
@@ -215,6 +255,21 @@ namespace Quartermaster
             if (collectible is Block buildBlock &&
                 (buildBlock.BlockMaterial == EnumBlockMaterial.Stone || buildBlock.BlockMaterial == EnumBlockMaterial.Ceramic))
                 cat |= ItemCategory.Building;
+
+            // Plants: living Plant/Leaves blocks, plus seed/sapling/cutting items. Flower pots
+            // are excluded — they're empty decorative containers ("flowerpot" matches "flower").
+            bool isPlantBlock = collectible is Block plantBlock &&
+                (plantBlock.BlockMaterial == EnumBlockMaterial.Plant || plantBlock.BlockMaterial == EnumBlockMaterial.Leaves);
+            if (isPlantBlock) cat |= ItemCategory.Plants;
+            else if (!path.Contains("flowerpot"))
+                foreach (var part in PlantCodeParts) if (path.Contains(part)) { cat |= ItemCategory.Plants; break; }
+
+            // Decor: paintings/pictures, tapestries, decorative clutter.
+            foreach (var part in DecorCodeParts) if (path.Contains(part)) { cat |= ItemCategory.Decor; break; }
+
+            // Powders: crushed/pulverized substances, plus flour (anchored).
+            if (path == "flour" || path.StartsWith("flour-")) cat |= ItemCategory.Powders;
+            else foreach (var part in PowderCodeParts) if (path.Contains(part)) { cat |= ItemCategory.Powders; break; }
 
             return cat;
         }
@@ -289,6 +344,9 @@ namespace Quartermaster
             ElementBounds wearablesBtnBounds = ElementBounds.Fixed(catColX, catColY + 4 * catStep, catBtnW, catBtnH);
             ElementBounds metalsBtnBounds    = ElementBounds.Fixed(catColX, catColY + 5 * catStep, catBtnW, catBtnH);
             ElementBounds buildingBtnBounds  = ElementBounds.Fixed(catColX, catColY + 6 * catStep, catBtnW, catBtnH);
+            ElementBounds plantsBtnBounds    = ElementBounds.Fixed(catColX, catColY + 7 * catStep, catBtnW, catBtnH);
+            ElementBounds decorBtnBounds     = ElementBounds.Fixed(catColX, catColY + 8 * catStep, catBtnW, catBtnH);
+            ElementBounds powdersBtnBounds   = ElementBounds.Fixed(catColX, catColY + 9 * catStep, catBtnW, catBtnH);
 
             // HEIGHT: 435px (fits 9 rows).
             ElementBounds gridBounds = ElementBounds.Fixed(leftMargin, 85, gridWidth + 5, 435);
@@ -337,6 +395,9 @@ namespace Quartermaster
                 .AddToggleButton("Wearables", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Wearables, on), wearablesBtnBounds, "catWearables")
                 .AddToggleButton("Ores & Metals", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Metals, on), metalsBtnBounds, "catMetals")
                 .AddToggleButton("Building", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Building, on), buildingBtnBounds, "catBuilding")
+                .AddToggleButton("Plants", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Plants, on), plantsBtnBounds, "catPlants")
+                .AddToggleButton("Decor", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Decor, on), decorBtnBounds, "catDecor")
+                .AddToggleButton("Powders", CairoFont.WhiteSmallText(), on => OnCategoryToggle(ItemCategory.Powders, on), powdersBtnBounds, "catPowders")
                 .AddItemSlotGrid(virtualInventory, OnSlotClick, COLS, gridBounds, "itemgrid")
                 .AddSmallButton("Prev", OnPrevPage, prevButtonBounds)
                 .AddSmallButton("Next", OnNextPage, nextButtonBounds)
@@ -374,6 +435,9 @@ namespace Quartermaster
             SingleComposer.GetToggleButton("catWearables").SetValue(activeCategories.HasFlag(ItemCategory.Wearables));
             SingleComposer.GetToggleButton("catMetals").SetValue(activeCategories.HasFlag(ItemCategory.Metals));
             SingleComposer.GetToggleButton("catBuilding").SetValue(activeCategories.HasFlag(ItemCategory.Building));
+            SingleComposer.GetToggleButton("catPlants").SetValue(activeCategories.HasFlag(ItemCategory.Plants));
+            SingleComposer.GetToggleButton("catDecor").SetValue(activeCategories.HasFlag(ItemCategory.Decor));
+            SingleComposer.GetToggleButton("catPowders").SetValue(activeCategories.HasFlag(ItemCategory.Powders));
         }
 
         private void OnSearchChanged(string text)
@@ -465,6 +529,7 @@ namespace Quartermaster
                             Code = entry.Stack.Collectible.Code.ToString(),
                             Type = entry.Stack.Class.ToString(),
                             VariantType = entry.Stack.Attributes?.GetString("type"),
+                            Variant = entry.Stack.Attributes?.GetString("variant"),
                             Material = entry.Stack.Attributes?.GetString("material"),
                             Mode = mode
                         });

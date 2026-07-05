@@ -5,6 +5,7 @@ using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.API.MathTools;
@@ -248,6 +249,9 @@ namespace Quartermaster
                             // Never index or touch work-station inventories (cooking pots on a
                             // firepit, ore in a bloomery, a workitem on an anvil, etc.).
                             if (IsProcessingDevice(be)) continue;
+                            // Barrels are excluded too: they hold liquids and sealed
+                            // curing/fermenting recipes, so pulling from them is destructive.
+                            if (be is BlockEntityBarrel) continue;
                             if (predicate != null && !predicate(be)) continue;
                             // Honor land claims: skip containers the player isn't allowed to use.
                             if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;
@@ -285,7 +289,8 @@ namespace Quartermaster
         // anvil, grain in a quern, or iron plates packed in a stone coffin mid-cementation.
         // These must never appear in the ledger or be withdrawable —
         // pulling from them removes the item from an active device (destructive). `is` checks
-        // also catch modded subclasses. Barrels are intentionally NOT excluded (real storage).
+        // also catch modded subclasses. Barrels are excluded separately in EnumerateContainers,
+        // since they hold liquids and sealed curing/fermenting recipes.
         // Land-claim check: true if the player may USE (open) a block at pos — owners and
         // granted players/groups pass, everyone else is denied. Lets the remote terminal honor
         // claims by skipping containers the player couldn't access by hand. Unclaimed land and
@@ -328,13 +333,20 @@ namespace Quartermaster
                 if (slot?.Itemstack == null) continue;
                 string code = slot.Itemstack.Collectible.Code.ToString();
                 // Decorative chests, clutter, and other attribute-variant blocks share one block
-                // code; the specific kind lives in the "type"/"material" attributes. Key on all
-                // three so variants don't collapse into a single generic entry.
+                // code; the specific kind lives in the "type"/"variant"/"material" attributes. Key
+                // on all of them so distinct variants don't collapse into a single generic entry.
                 string variantType = slot.Itemstack.Attributes?.GetString("type") ?? "";
+                string variant = slot.Itemstack.Attributes?.GetString("variant") ?? "";
                 string material = slot.Itemstack.Attributes?.GetString("material") ?? "";
-                string key = code + "|" + variantType + "|" + material;
+                string key = code + "|" + variantType + "|" + variant + "|" + material;
                 if (!list.ContainsKey(key))
-                    list[key] = new QuartermasterItemDTO { Code = code, Count = 0, Type = slot.Itemstack.Class.ToString(), VariantType = variantType, Material = material };
+                    list[key] = new QuartermasterItemDTO {
+                        Code = code, Count = 0, Type = slot.Itemstack.Class.ToString(),
+                        VariantType = variantType, Variant = variant, Material = material,
+                        // Keep a representative attribute tree so the client can rebuild the exact
+                        // look (mesh + name) — cheap: one snapshot per distinct variant, not per stack.
+                        AttributesData = (slot.Itemstack.Attributes as TreeAttribute)?.ToBytes()
+                    };
 
                 list[key].Count += slot.Itemstack.StackSize;
                 if (list[key].Locations.Count < 20 && !list[key].Locations.Any(l => l.X == pos.X && l.Y == pos.Y && l.Z == pos.Z))
@@ -376,6 +388,7 @@ namespace Quartermaster
                     if (st == null || st.Class != cls || !st.Collectible.Code.Equals(code)) continue;
                     // Match the exact attribute-variant the player clicked (normalize null↔"").
                     if ((st.Attributes?.GetString("type") ?? "") != (packet.VariantType ?? "")) continue;
+                    if ((st.Attributes?.GetString("variant") ?? "") != (packet.Variant ?? "")) continue;
                     if ((st.Attributes?.GetString("material") ?? "") != (packet.Material ?? "")) continue;
 
                     int take = Math.Min(st.StackSize, want - delivered);

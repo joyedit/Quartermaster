@@ -2,6 +2,22 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.11
+### Fixed
+- Clutter bookshelves (and other attribute-driven decor) no longer show as blank white "?" cubes in the ledger. These blocks store their appearance in itemstack attributes beyond `type`/`material` (e.g. a bookshelf's `variant`); the ledger now preserves a representative stack's full attribute tree, so the correct mesh, name, and material render. The `variant` attribute is also part of the item key now, so distinct variants list separately and withdraw the exact kind clicked.
+
+## v1.0.10
+### Fixed
+- Flower pots no longer appear under the **Plants** tab. The empty decorative pot was matching the `flower` keyword; it's now excluded.
+
+## v1.0.9
+### Added
+- Three new category filters: **Plants** (flowers, grass, ferns, mushrooms, saplings, seeds, cuttings, reeds), **Decor** (paintings/pictures, tapestries, decorative clutter), and **Powders** (flour and crushed/pulverized substances).
+
+## v1.0.8
+### Changed
+- Barrels are no longer scanned. Because barrels hold liquids and sealed curing/fermenting recipes, remotely pulling from them is destructive — so their contents no longer appear in the ledger and can't be located or withdrawn. Deposits were already never routed to barrels.
+
 ## v1.0.7
 ### Fixed
 - Stone coffins are no longer scanned. Iron plates and charcoal packed into a stone coffin during cementation (steel-making) were treated as ordinary storage — they could appear in the ledger and even be withdrawn mid-process, ruining the burn. The coffin is now excluded like other processing devices (firepit, bloomery, forge, oven, etc.).
