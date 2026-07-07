@@ -2,6 +2,11 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.13
+### Fixed
+- The held-tag "Excluded" overlay no longer reveals excluded containers inside land claims you can't use. Previously, holding a Quartermaster's Tag near someone else's claim showed through-wall labels for their tagged containers — leaking the exact position of storage they had deliberately hidden. The overlay now applies the same claim check as the ledger (`HonorClaims`, default `true`).
+- Exclusions no longer carry over to a replacement container. An exclusion is keyed to a position, and cleanup used to be lazy — so breaking a tagged chest and placing a new container in the same spot could silently inherit the exclusion. The exclusion is now removed the moment the block is broken (or when something new is placed over an excluded spot, e.g. after an explosion), so a new container always starts visible to the desk.
+
 ## v1.0.12
 ### Added
 - **Quartermaster's Tag** — a craftable, reusable tool for hiding individual containers from the desk. Hold the tag and sneak + right-click any storage — chests, vessels, crates, shelves, display cases, tool racks, even stacks of goods on the floor — to exclude it: it vanishes from the ledger completely (no browse, count, locate, withdraw, or deposit). Sneak + right-click again to bring it back. The tag takes priority over the block's own sneak interaction, so racks and floor stacks can be tagged without taking a tool or adding to the pile; a plain right-click keeps its normal behavior, so containers still open while the tag is held. Nearby excluded containers show a floating "Excluded" label visible through walls while the tag is in hand. Exclusions apply to the container itself (shared by all players), are stored in the world save, honor land claims, and clean themselves up when a tagged container is removed. Crafted from an ink & quill over parchment over flax twine (ingredients consumed; the tag itself is reusable forever).

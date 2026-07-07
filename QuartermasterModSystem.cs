@@ -102,6 +102,13 @@ namespace Quartermaster
 
             sapi.Event.SaveGameLoaded += LoadExcludedPositions;
             sapi.Event.GameWorldSave += SaveExcludedPositions;
+
+            // Exclusions are keyed to a position, not a block entity — drop the entry the
+            // moment its block is broken (or something new is placed over an excluded spot,
+            // e.g. after an explosion) so a replacement container never inherits it. The lazy
+            // prune in SendExcludedList remains as a backstop for other removal paths.
+            sapi.Event.DidBreakBlock += OnServerBlockBroken;
+            sapi.Event.DidPlaceBlock += OnServerBlockPlaced;
         }
 
         private bool OnHotKey(KeyCombination comb)
@@ -440,6 +447,18 @@ namespace Quartermaster
             SendExcludedList(player);
         }
 
+        private void OnServerBlockBroken(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel)
+            => RemoveExclusionAt(blockSel?.Position);
+
+        private void OnServerBlockPlaced(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel, ItemStack withItemStack)
+            => RemoveExclusionAt(blockSel?.Position);
+
+        private void RemoveExclusionAt(BlockPos pos)
+        {
+            if (pos == null || !excludedPositions.Remove(PosKey(pos))) return;
+            SaveExcludedPositions();
+        }
+
         private void OnExcludedRequest(IServerPlayer player, PacketExcludedRequest packet) => SendExcludedList(player);
 
         // Sends the excluded positions near the player, for the held-tag label overlay.
@@ -474,6 +493,12 @@ namespace Quartermaster
                     BlockEntity be = accessor.GetBlockEntity(pos);
                     if (be == null || GetInventory(be) == null) { stale.Add(key); continue; }
                 }
+
+                // Honor land claims: never reveal excluded containers inside claims this
+                // player can't use — the through-wall "Excluded" label would otherwise leak
+                // the position of storage someone deliberately hid.
+                if (config.HonorClaims && !HasClaimAccess(player, pos)) continue;
+
                 nearby.Add(new SimplePos { X = x, Y = y, Z = z });
             }
 
