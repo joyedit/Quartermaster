@@ -1,0 +1,15 @@
+{
+  "code": "quartermastertag",
+  "class": "ItemQuartermasterTag",
+  "maxstacksize": 1,
+  "texture": { "base": "game:item/resource/paperlabel" },
+  "creativeinventory": { "general": ["*"], "items": ["*"] },
+  "materialDensity": 200,
+  "attributes": {
+    "handbook": {
+      "extraSections": [
+        { "title": "quartermaster:quartermaster-tag-hb-title", "text": "quartermaster:quartermaster-tag-hb-text" }
+      ]
+    }
+  }
+}

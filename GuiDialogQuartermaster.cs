@@ -55,6 +55,17 @@ namespace Quartermaster
         public int Mode;      // 0 = whole cursor stack, 1 = one from cursor, 2 = deposit all from backpack
     }
 
+    // Client asks for the tag-excluded container positions near the player (sent while
+    // holding a Quartermaster's Tag, to drive the "Excluded" label overlay).
+    [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
+    public class PacketExcludedRequest { }
+
+    [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
+    public class PacketExcludedList
+    {
+        public List<SimplePos> Positions = new List<SimplePos>();
+    }
+
     [Flags]
     public enum ItemCategory
     {

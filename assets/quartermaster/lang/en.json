@@ -5,6 +5,13 @@
   "block-quartermasterdesk-south": "Quartermaster's Desk",
   "block-quartermasterdesk-west": "Quartermaster's Desk",
 
+  "item-quartermastertag": "Quartermaster's Tag",
+  "heldhelp-tag-toggle": "Exclude/include container in the ledger",
+  "tag-label-excluded": "Excluded",
+
+  "quartermaster-tag-hb-title": "Curating the ledger",
+  "quartermaster-tag-hb-text": "The Quartermaster's Tag hides individual containers from the Quartermaster's Desk. Hold the tag and sneak + right-click any storage — a chest, vessel, crate, shelf, display case, tool rack, or a stack of goods on the floor — to exclude it: it disappears from the ledger entirely. Its contents aren't listed or counted, locate won't mark it, withdraw won't pull from it, and deposits never flow into it. Sneak + right-click again to return it to the ledger.\nA plain right-click keeps its normal behavior, so you can still open containers while holding the tag. While the tag is in your hand, nearby excluded containers show a floating \"Excluded\" label visible through walls, so you can always see what's hidden. Exclusions apply to the container itself (shared by all players), respect land claims, and clear automatically when a tagged container is removed. The tag is a reusable tool and is never consumed.",
+
   "quartermaster-hb-overview-title": "What it does",
   "quartermaster-hb-overview-text": "The Quartermaster's Desk is a remote storage terminal. Place it anywhere in your base, then look at it and press the Quartermaster hotkey (J by default) or right-click it to open the ledger. The ledger lists everything stored in nearby chests, vessels, crates, barrels, tool racks, display cases, and shelves — so you can browse, search, and manage your whole stockpile without opening a single container.",
 

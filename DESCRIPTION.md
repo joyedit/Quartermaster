@@ -17,6 +17,7 @@ Quartermaster adds a single craftable block — the **Quartermaster's Desk** —
 - **Deposit just as fast.** Drop a held item on the Deposit cell (right-click stores one), or hit **Deposit All** to empty your backpack bags into storage. Your worn bags and hotbar are never touched.
 - **Locate anything.** Middle-click an item to highlight every container holding it — blue block markers, floating labels you can read through walls, and temporary map waypoints.
 - **Respects land claims.** On a claimed server it only reaches containers you're actually allowed to use — others' claimed chests stay private.
+- **Keep private storage private.** Craft a **Quartermaster's Tag** and sneak + right-click any storage — chests, vessels, crates, shelves, display cases, tool racks, even floor stacks — to exclude it from the desk entirely: no listing, locating, withdrawing, or depositing. Sneak + right-click again to bring it back. While holding the tag, excluded containers show a floating "Excluded" label through walls so you can always see what's hidden.
 - **Place it anywhere.** No foundation requirement.
 
 ## Built to be safe
@@ -38,6 +39,16 @@ nails    planks      ink & quill
 ```
 
 The chisel is used as a tool (not consumed); the nails and ink & quill are consumed.
+
+Quartermaster's Tag (vertical, any grid column):
+
+```
+ink & quill
+parchment
+flax twine
+```
+
+The ingredients are consumed, but the tag itself is reusable and never wears out.
 
 ## Configuration
 

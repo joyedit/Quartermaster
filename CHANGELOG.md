@@ -2,6 +2,10 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.12
+### Added
+- **Quartermaster's Tag** — a craftable, reusable tool for hiding individual containers from the desk. Hold the tag and sneak + right-click any storage — chests, vessels, crates, shelves, display cases, tool racks, even stacks of goods on the floor — to exclude it: it vanishes from the ledger completely (no browse, count, locate, withdraw, or deposit). Sneak + right-click again to bring it back. The tag takes priority over the block's own sneak interaction, so racks and floor stacks can be tagged without taking a tool or adding to the pile; a plain right-click keeps its normal behavior, so containers still open while the tag is held. Nearby excluded containers show a floating "Excluded" label visible through walls while the tag is in hand. Exclusions apply to the container itself (shared by all players), are stored in the world save, honor land claims, and clean themselves up when a tagged container is removed. Crafted from an ink & quill over parchment over flax twine (ingredients consumed; the tag itself is reusable forever).
+
 ## v1.0.11
 ### Fixed
 - Clutter bookshelves (and other attribute-driven decor) no longer show as blank white "?" cubes in the ledger. These blocks store their appearance in itemstack attributes beyond `type`/`material` (e.g. a bookshelf's `variant`); the ledger now preserves a representative stack's full attribute tree, so the correct mesh, name, and material render. The `variant` attribute is also part of the item key now, so distinct variants list separately and withdraw the exact kind clicked.

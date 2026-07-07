@@ -23,7 +23,17 @@ namespace Quartermaster
         private WaypointMapLayer wpLayer;
         private ContainerLabelRenderer labelRenderer;
         private ICoreClientAPI capi;
+        private ICoreServerAPI sapi;
         private static QuartermasterConfig config;
+
+        // Containers players have hidden from the desk with a Quartermaster's Tag,
+        // keyed "x,y,z". Server-side, persisted in the world save.
+        private HashSet<string> excludedPositions = new HashSet<string>();
+
+        // Client-side held-tag overlay state.
+        private bool holdingTag;
+        private bool showingExcluded;
+        private float tagRefreshAccum;
 
         // Locate state, kept in sync as containers are opened.
         private string currentItemName;
@@ -35,20 +45,24 @@ namespace Quartermaster
         public override void Start(ICoreAPI api)
         {
             api.RegisterBlockClass("BlockQuartermasterDesk", typeof(BlockQuartermasterDesk));
+            api.RegisterItemClass("ItemQuartermasterTag", typeof(ItemQuartermasterTag));
 
             api.Network.RegisterChannel("quartermaster")
                .RegisterMessageType(typeof(PacketQuartermasterRequest))
                .RegisterMessageType(typeof(PacketQuartermasterResponse))
                .RegisterMessageType(typeof(SimplePos))
                .RegisterMessageType(typeof(PacketWithdraw))
-               .RegisterMessageType(typeof(PacketDeposit));
+               .RegisterMessageType(typeof(PacketDeposit))
+               .RegisterMessageType(typeof(PacketExcludedRequest))
+               .RegisterMessageType(typeof(PacketExcludedList));
         }
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             this.capi = api;
             clientChannel = capi.Network.GetChannel("quartermaster")
-                .SetMessageHandler<PacketQuartermasterResponse>(OnQuartermasterDataReceived);
+                .SetMessageHandler<PacketQuartermasterResponse>(OnQuartermasterDataReceived)
+                .SetMessageHandler<PacketExcludedList>(OnExcludedListReceived);
 
             dialog = new GuiDialogQuartermaster(capi, this);
 
@@ -65,6 +79,8 @@ namespace Quartermaster
 
         public override void StartServerSide(ICoreServerAPI sapi)
         {
+            this.sapi = sapi;
+
             try
             {
                 config = sapi.LoadModConfig<QuartermasterConfig>("QuartermasterConfig.json");
@@ -81,7 +97,11 @@ namespace Quartermaster
             serverChannel = sapi.Network.GetChannel("quartermaster")
                 .SetMessageHandler<PacketQuartermasterRequest>(OnClientRequest)
                 .SetMessageHandler<PacketWithdraw>(OnWithdraw)
-                .SetMessageHandler<PacketDeposit>(OnDeposit);
+                .SetMessageHandler<PacketDeposit>(OnDeposit)
+                .SetMessageHandler<PacketExcludedRequest>(OnExcludedRequest);
+
+            sapi.Event.SaveGameLoaded += LoadExcludedPositions;
+            sapi.Event.GameWorldSave += SaveExcludedPositions;
         }
 
         private bool OnHotKey(KeyCombination comb)
@@ -96,6 +116,8 @@ namespace Quartermaster
         // --- INSTANT REMOVAL LOGIC ---
         private void OnClientTick(float dt)
         {
+            UpdateTagOverlay(dt);
+
             if (!capi.Input.MouseButton.Right) return;
 
             var blockSel = capi.World.Player.CurrentBlockSelection;
@@ -111,6 +133,44 @@ namespace Quartermaster
                 // An opened container's highlight, label AND map waypoint all clear together.
                 RefreshHighlights();
             }
+        }
+
+        // While the player holds a Quartermaster's Tag, nearby excluded containers show an
+        // "Excluded" label (reusing the through-wall label renderer). The list refreshes on
+        // equip and every couple of seconds while held (so it tracks toggles and newly loaded
+        // areas); putting the tag away restores the normal locate labels.
+        private void UpdateTagOverlay(float dt)
+        {
+            bool holding = capi.World.Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible is ItemQuartermasterTag;
+
+            if (holding)
+            {
+                tagRefreshAccum += dt;
+                if (!holdingTag || tagRefreshAccum > 2f)
+                {
+                    tagRefreshAccum = 0f;
+                    clientChannel.SendPacket(new PacketExcludedRequest());
+                }
+            }
+            else if (holdingTag)
+            {
+                showingExcluded = false;
+                RefreshHighlights();
+            }
+
+            holdingTag = holding;
+        }
+
+        private void OnExcludedListReceived(PacketExcludedList packet)
+        {
+            if (!holdingTag) return;
+            showingExcluded = true;
+
+            string text = Lang.Get("quartermaster:tag-label-excluded");
+            var labels = packet.Positions
+                .Select(p => new ContainerLabel { X = p.X, Y = p.Y, Z = p.Z, Text = text })
+                .ToList();
+            labelRenderer?.SetLabels(labels);
         }
 
         public void SetHighlights(List<BlockPos> positions, string itemName = null, Dictionary<string, int> perLocationCounts = null)
@@ -208,16 +268,20 @@ namespace Quartermaster
                 List<int> colors = activeHighlights.Select(_ => blue).ToList();
                 capi.World.HighlightBlocks(capi.World.Player, 56, activeHighlights, colors, EnumHighlightBlocksMode.Absolute, EnumHighlightShape.Cube);
 
-                // Show labels only for containers still open.
-                var remaining = currentLabels
-                    .Where(l => activeHighlights.Any(p => p.X == l.X && p.Y == l.Y && p.Z == l.Z))
-                    .ToList();
-                labelRenderer?.SetLabels(remaining);
+                // Show labels only for containers still open. While the held-tag "Excluded"
+                // overlay owns the renderer, leave its labels alone.
+                if (!showingExcluded)
+                {
+                    var remaining = currentLabels
+                        .Where(l => activeHighlights.Any(p => p.X == l.X && p.Y == l.Y && p.Z == l.Z))
+                        .ToList();
+                    labelRenderer?.SetLabels(remaining);
+                }
             }
             else
             {
                 capi.World.HighlightBlocks(capi.World.Player, 56, new List<BlockPos>(), new List<int>());
-                labelRenderer?.ClearLabels();
+                if (!showingExcluded) labelRenderer?.ClearLabels();
             }
 
             SyncWaypoints();
@@ -246,6 +310,9 @@ namespace Quartermaster
                         foreach (var entry in chunk.BlockEntities) {
                             BlockEntity be = entry.Value;
                             if (be == null) continue;
+                            // Player-tagged exclusions (Quartermaster's Tag): the container is
+                            // invisible to the desk — no browse, locate, withdraw, or deposit.
+                            if (excludedPositions.Contains(PosKey(entry.Key))) continue;
                             // Never index or touch work-station inventories (cooking pots on a
                             // firepit, ore in a bloomery, a workitem on an anvil, etc.).
                             if (IsProcessingDevice(be)) continue;
@@ -312,6 +379,111 @@ namespace Quartermaster
                 || be is BlockEntityBoiler
                 || be is BlockEntityStoneCoffin
                 || be is BlockEntityAnvil;
+        }
+
+        // --- CONTAINER EXCLUSION (Quartermaster's Tag) ---
+
+        private static string PosKey(BlockPos pos) => $"{pos.X},{pos.Y},{pos.Z}";
+
+        private void LoadExcludedPositions()
+        {
+            try
+            {
+                byte[] data = sapi.WorldManager.SaveGame.GetData("quartermasterExcluded");
+                if (data != null)
+                    excludedPositions = new HashSet<string>(SerializerUtil.Deserialize<List<string>>(data));
+            }
+            catch (Exception ex)
+            {
+                Mod.Logger.Error("[Quartermaster] Failed to load excluded-container list: {0}", ex);
+                excludedPositions = new HashSet<string>();
+            }
+        }
+
+        private void SaveExcludedPositions()
+        {
+            sapi.WorldManager.SaveGame.StoreData("quartermasterExcluded", SerializerUtil.Serialize(excludedPositions.ToList()));
+        }
+
+        // Toggles a container in or out of the ledger. Called server-side by
+        // ItemQuartermasterTag when a player sneak-clicks a block while holding a tag.
+        // Only blocks the desk would actually scan can be tagged, and claim access is
+        // checked so players can't tag containers they couldn't open by hand.
+        public void ToggleExcluded(IServerPlayer player, BlockPos pos)
+        {
+            BlockEntity be = player.Entity.World.BlockAccessor.GetBlockEntity(pos);
+            bool scannable = be != null && !IsProcessingDevice(be) && !(be is BlockEntityBarrel) && GetInventory(be) != null;
+            if (!scannable)
+            {
+                player.SendMessage(GlobalConstants.GeneralChatGroup,
+                    "Quartermaster: that block isn't a container the desk scans.", EnumChatType.Notification);
+                return;
+            }
+            if (config.HonorClaims && !HasClaimAccess(player, pos))
+            {
+                player.SendMessage(GlobalConstants.GeneralChatGroup,
+                    "Quartermaster: you don't have permission to use that container.", EnumChatType.Notification);
+                return;
+            }
+
+            string key = PosKey(pos);
+            bool nowExcluded = excludedPositions.Add(key);
+            if (!nowExcluded) excludedPositions.Remove(key);
+            SaveExcludedPositions();
+
+            player.SendMessage(GlobalConstants.GeneralChatGroup,
+                nowExcluded ? "Quartermaster: container excluded from the ledger."
+                            : "Quartermaster: container returned to the ledger.",
+                EnumChatType.Notification);
+
+            // Keep the held-tag overlay in sync immediately.
+            SendExcludedList(player);
+        }
+
+        private void OnExcludedRequest(IServerPlayer player, PacketExcludedRequest packet) => SendExcludedList(player);
+
+        // Sends the excluded positions near the player, for the held-tag label overlay.
+        // Also lazily prunes entries whose container no longer exists — but only when the
+        // chunk is loaded, so a chest in an unloaded area is never mistaken for a removed one.
+        private void SendExcludedList(IServerPlayer player)
+        {
+            var accessor = player.Entity.World.BlockAccessor;
+            BlockPos pPos = player.Entity.Pos.AsBlockPos;
+            int range = (config.ChunkRadius + 1) * 32;
+
+            var nearby = new List<SimplePos>();
+            var stale = new List<string>();
+
+            foreach (string key in excludedPositions)
+            {
+                string[] parts = key.Split(',');
+                if (parts.Length != 3
+                    || !int.TryParse(parts[0], out int x)
+                    || !int.TryParse(parts[1], out int y)
+                    || !int.TryParse(parts[2], out int z))
+                {
+                    stale.Add(key);
+                    continue;
+                }
+
+                if (Math.Abs(x - pPos.X) > range || Math.Abs(z - pPos.Z) > range) continue;
+
+                BlockPos pos = new BlockPos(x, y, z, 0);
+                if (accessor.GetChunkAtBlockPos(pos) != null)
+                {
+                    BlockEntity be = accessor.GetBlockEntity(pos);
+                    if (be == null || GetInventory(be) == null) { stale.Add(key); continue; }
+                }
+                nearby.Add(new SimplePos { X = x, Y = y, Z = z });
+            }
+
+            if (stale.Count > 0)
+            {
+                foreach (string key in stale) excludedPositions.Remove(key);
+                SaveExcludedPositions();
+            }
+
+            serverChannel.SendPacket(new PacketExcludedList { Positions = nearby }, player);
         }
 
         private void OnClientRequest(IServerPlayer player, PacketQuartermasterRequest packet) => SendLedger(player);
