@@ -72,6 +72,10 @@ namespace Quartermaster
             // Uses GameTickListener for instant click detection/removal
             capi.Event.RegisterGameTickListener(OnClientTick, 50);
 
+            // Shift-click deposit while the ledger is open. This raw event fires before
+            // any GUI dialog sees the click (see OnClientMouseDown).
+            capi.Event.MouseDown += OnClientMouseDown;
+
             // Register the floating label renderer for through-wall container labels
             labelRenderer = new ContainerLabelRenderer(capi);
             capi.Event.RegisterRenderer(labelRenderer, EnumRenderStage.Ortho);
@@ -140,6 +144,38 @@ namespace Quartermaster
                 // An opened container's highlight, label AND map waypoint all clear together.
                 RefreshHighlights();
             }
+        }
+
+        // Shift+Left-clicking an item in the hotbar or bags while the ledger is open
+        // deposits it straight into storage. Hooked on the raw mouse-down event because it
+        // fires before any GUI dialog gets the click — the vanilla inventory dialog is
+        // ahead of ours in input order and would otherwise shift-move the stack between
+        // bags and hotbar before we ever saw it.
+        private void OnClientMouseDown(MouseEvent args)
+        {
+            if (args.Handled || args.Button != EnumMouseButton.Left) return;
+            if (dialog == null || !dialog.IsOpened() || dialog.IsLocateOnly) return;
+            if (!capi.Input.KeyboardKeyState[(int)GlKeys.ShiftLeft] &&
+                !capi.Input.KeyboardKeyState[(int)GlKeys.ShiftRight]) return;
+
+            var invMgr = capi.World.Player?.InventoryManager;
+            ItemSlot hovered = invMgr?.CurrentHoveredSlot;
+            // Only filled slots in the player's own hotbar/backpack, never an equipped bag
+            // itself, and only with an empty cursor (a held stack keeps its vanilla
+            // place/swap behavior). The class-name check also leaves the ledger's own
+            // virtual grid alone, where shift-click still means "withdraw all".
+            if (hovered?.Itemstack == null || hovered is ItemSlotBackpack) return;
+            if (invMgr.MouseItemSlot?.Itemstack != null) return;
+
+            string invClass = hovered.Inventory?.ClassName;
+            if (invClass != GlobalConstants.hotBarInvClassName &&
+                invClass != GlobalConstants.backpackInvClassName) return;
+
+            int slotId = hovered.Inventory.GetSlotId(hovered);
+            if (slotId < 0) return;
+
+            clientChannel.SendPacket(new PacketDeposit { Mode = 3, InventoryClass = invClass, SlotId = slotId });
+            args.Handled = true;
         }
 
         // While the player holds a Quartermaster's Tag, nearby excluded containers show an
@@ -640,6 +676,29 @@ namespace Quartermaster
                     slot.MarkDirty();
                 }
                 WarnIfStorageFull(player, notDeposited, null);
+                return;
+            }
+
+            // Mode 3: shift-click deposit of one specific hotbar/backpack slot. Only the
+            // player's own inventories are ever resolved — the class name is validated
+            // rather than trusted, so a forged packet can't reference anything else.
+            if (packet.Mode == 3)
+            {
+                if (packet.InventoryClass != GlobalConstants.hotBarInvClassName &&
+                    packet.InventoryClass != GlobalConstants.backpackInvClassName) return;
+
+                IInventory inv = player.InventoryManager.GetOwnInventory(packet.InventoryClass);
+                if (inv == null || packet.SlotId < 0 || packet.SlotId >= inv.Count) return;
+
+                ItemSlot slot = inv[packet.SlotId];
+                if (slot?.Itemstack == null || slot is ItemSlotBackpack) return;
+
+                string name = slot.Itemstack.GetName();
+                StoreIntoContainers(player, slot.Itemstack);
+                int remaining = slot.Itemstack.StackSize; // whatever didn't fit stays put
+                if (remaining <= 0) slot.Itemstack = null;
+                slot.MarkDirty();
+                WarnIfStorageFull(player, remaining, name);
                 return;
             }
 

@@ -52,7 +52,9 @@ namespace Quartermaster
     [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
     public class PacketDeposit
     {
-        public int Mode;      // 0 = whole cursor stack, 1 = one from cursor, 2 = deposit all from backpack
+        public int Mode;      // 0 = whole cursor stack, 1 = one from cursor, 2 = deposit all from backpack, 3 = one specific player slot (shift-click)
+        public string InventoryClass; // Mode 3: "hotbar" or "backpack"
+        public int SlotId;            // Mode 3: slot index within that inventory
     }
 
     // Client asks for the tag-excluded container positions near the player (sent while
@@ -115,6 +117,10 @@ namespace Quartermaster
         // controls are hidden and grid clicks locate instead of withdraw. Writes are also
         // blocked server-side regardless of this flag.
         private bool locateOnly = false;
+
+        // Read by the mod system's shift-click deposit hook, so it can leave vanilla
+        // click behavior alone on a read-only station.
+        public bool IsLocateOnly => locateOnly;
 
         // The entries currently shown on the visible page, indexed to match the grid slots.
         private List<QuartermasterEntry> currentVisibleEntries = new List<QuartermasterEntry>();
@@ -389,6 +395,9 @@ namespace Quartermaster
                   "• Left-click: one stack\n" +
                   "• Right-click: one item\n" +
                   "• Shift+click: all\n\n" +
+                  "Deposit:\n" +
+                  "• Shift+click an item in\n" +
+                  "  your hotbar or bags\n\n" +
                   "Locate:\n" +
                   "• Middle-click an item";
 

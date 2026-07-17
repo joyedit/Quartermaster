@@ -2,6 +2,10 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.15
+### Added
+- **Shift-click deposit.** While the ledger is open, Shift+Left-click any item in your hotbar or bags to send it straight into storage — no more dragging stacks onto the Deposit cell one by one. Works on any slot in your hotbar or backpack bags (equipped bags themselves are never deposited), uses the same loss-free storage routine as the Deposit cell, and tells you if storage is full. While the ledger is open this replaces the vanilla shift-move between bags and hotbar; on read-only (`LocateOnly`) stations the vanilla behavior is untouched. Shift+click on the ledger grid still means "withdraw all".
+
 ## v1.0.14
 ### Changed
 - Placed buckets are no longer scanned, empty or full. Like barrels, they hold liquids, so their contents no longer appear in the ledger and can't be located or withdrawn.

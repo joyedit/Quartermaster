@@ -14,7 +14,7 @@ Quartermaster adds a single craftable block — the **Quartermaster's Desk** —
   - Left-click — one stack
   - Right-click — a single item
   - Shift+click — all of that item, gathered from every container at once
-- **Deposit just as fast.** Drop a held item on the Deposit cell (right-click stores one), or hit **Deposit All** to empty your backpack bags into storage. Your worn bags and hotbar are never touched.
+- **Deposit just as fast.** Shift+click any item in your hotbar or bags to send it straight into storage, drop a held item on the Deposit cell (right-click stores one), or hit **Deposit All** to empty your backpack bags into storage. Your worn bags are never touched.
 - **Locate anything.** Middle-click an item to highlight every container holding it — blue block markers, floating labels you can read through walls, and temporary map waypoints.
 - **Respects land claims.** On a claimed server it only reaches containers you're actually allowed to use — others' claimed chests stay private.
 - **Keep private storage private.** Craft a **Quartermaster's Tag** and sneak + right-click any storage — chests, vessels, crates, shelves, display cases, tool racks, even floor stacks — to exclude it from the desk entirely: no listing, locating, withdrawing, or depositing. Sneak + right-click again to bring it back. While holding the tag, excluded containers show a floating "Excluded" label through walls so you can always see what's hidden (claims are honored — you never see exclusions inside land you can't use). Exclusions are shared by all players, saved with the world, and clear automatically when the container is broken — a new container placed in the same spot starts visible.
