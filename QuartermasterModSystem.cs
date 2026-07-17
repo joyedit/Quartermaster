@@ -326,6 +326,9 @@ namespace Quartermaster
                             // Barrels are excluded too: they hold liquids and sealed
                             // curing/fermenting recipes, so pulling from them is destructive.
                             if (be is BlockEntityBarrel) continue;
+                            // Placed buckets likewise: they hold liquids, empty or not,
+                            // and shouldn't show up as storage.
+                            if (be is BlockEntityBucket) continue;
                             if (predicate != null && !predicate(be)) continue;
                             // Honor land claims: skip containers the player isn't allowed to use.
                             if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;
@@ -363,8 +366,9 @@ namespace Quartermaster
         // anvil, grain in a quern, or iron plates packed in a stone coffin mid-cementation.
         // These must never appear in the ledger or be withdrawable —
         // pulling from them removes the item from an active device (destructive). `is` checks
-        // also catch modded subclasses. Barrels are excluded separately in EnumerateContainers,
-        // since they hold liquids and sealed curing/fermenting recipes.
+        // also catch modded subclasses. Barrels and placed buckets are excluded separately in
+        // EnumerateContainers, since they hold liquids (and, for barrels, sealed
+        // curing/fermenting recipes).
         // Land-claim check: true if the player may USE (open) a block at pos — owners and
         // granted players/groups pass, everyone else is denied. Lets the remote terminal honor
         // claims by skipping containers the player couldn't access by hand. Unclaimed land and
@@ -419,7 +423,8 @@ namespace Quartermaster
         public void ToggleExcluded(IServerPlayer player, BlockPos pos)
         {
             BlockEntity be = player.Entity.World.BlockAccessor.GetBlockEntity(pos);
-            bool scannable = be != null && !IsProcessingDevice(be) && !(be is BlockEntityBarrel) && GetInventory(be) != null;
+            bool scannable = be != null && !IsProcessingDevice(be) && !(be is BlockEntityBarrel)
+                && !(be is BlockEntityBucket) && GetInventory(be) != null;
             if (!scannable)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup,

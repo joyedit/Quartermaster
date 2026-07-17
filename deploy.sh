@@ -6,11 +6,13 @@ MOD_NAME="QuartermasterMod"
 MODS_PATH="$HOME/.config/VintagestoryData/Mods"
 STAGING_DIR="bin/staging"
 BUILD_OUTPUT="bin/Debug/Mods/Quartermaster"
+VERSION=$(grep -oP '"version":\s*"\K[^"]+' modinfo.json)
+ZIP_NAME="$MOD_NAME-v$VERSION.zip"
 
 echo "--- 1. CLEANING ---"
 dotnet clean -v q
 rm -rf "$STAGING_DIR"
-rm -f "$MOD_NAME.zip"
+rm -f "$MOD_NAME"*.zip
 
 echo "--- 2. BUILDING (net10.0 / VS 1.22) ---"
 dotnet build -c Debug
@@ -27,12 +29,12 @@ cp "$BUILD_OUTPUT/Quartermaster.dll" "$STAGING_DIR/"
 cp -r assets "$STAGING_DIR/"
 
 cd "$STAGING_DIR"
-zip -r -q ../../"$MOD_NAME.zip" *
+zip -r -q ../../"$ZIP_NAME" *
 cd ../..
 
 echo "--- 4. DEPLOYING ZIP ---"
-# Remove any old version
-rm -f "$MODS_PATH/$MOD_NAME.zip"
-mv "$MOD_NAME.zip" "$MODS_PATH/"
+# Remove any old version (versioned or not) so only one copy of the mod loads
+rm -f "$MODS_PATH/$MOD_NAME"*.zip
+mv "$ZIP_NAME" "$MODS_PATH/"
 
-echo "Deploy Complete: $MODS_PATH/$MOD_NAME.zip"
+echo "Deploy Complete: $MODS_PATH/$ZIP_NAME"

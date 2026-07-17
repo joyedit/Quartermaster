@@ -2,6 +2,10 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.14
+### Changed
+- Placed buckets are no longer scanned, empty or full. Like barrels, they hold liquids, so their contents no longer appear in the ledger and can't be located or withdrawn.
+
 ## v1.0.13
 ### Fixed
 - The held-tag "Excluded" overlay no longer reveals excluded containers inside land claims you can't use. Previously, holding a Quartermaster's Tag near someone else's claim showed through-wall labels for their tagged containers — leaking the exact position of storage they had deliberately hidden. The overlay now applies the same claim check as the ledger (`HonorClaims`, default `true`).
