@@ -158,6 +158,20 @@ namespace Quartermaster
             if (!capi.Input.KeyboardKeyState[(int)GlKeys.ShiftLeft] &&
                 !capi.Input.KeyboardKeyState[(int)GlKeys.ShiftRight]) return;
 
+            // CurrentHoveredSlot is a cache refreshed only by mouse-move enter/leave events,
+            // and it can be empty right after the ledger opens even with the cursor on a
+            // slot — the vanilla grid hit-tests clicks itself, so it would still pick the
+            // item up while we saw "no slot hovered". Replay a synthetic mouse-move through
+            // the GUI dialogs (exactly what the engine does on a 1px cursor jiggle) so every
+            // slot grid refreshes its hover state before we read it.
+            var move = new MouseEvent(args.X, args.Y);
+            foreach (GuiDialog dlg in capi.Gui.LoadedGuis)
+            {
+                if (!dlg.ShouldReceiveMouseEvents()) continue;
+                dlg.OnMouseMove(move);
+                if (move.Handled) break;
+            }
+
             var invMgr = capi.World.Player?.InventoryManager;
             ItemSlot hovered = invMgr?.CurrentHoveredSlot;
             // Only filled slots in the player's own hotbar/backpack, never an equipped bag
