@@ -435,7 +435,12 @@ namespace Quartermaster
 
             compo.AddStaticText(helpText, CairoFont.WhiteDetailText(), helpBounds, "helpText");
 
-            SingleComposer = compo.Compose();
+            // Compose(false): never auto-focus the first element (the search bar). The
+            // dialog recomposes on server replies, paging and category toggles, and the
+            // default would silently hand the search bar focus each time — where it eats
+            // WASD and the Shift of a shift-click deposit. Typing flow is kept by
+            // OnSearchChanged, which refocuses the bar explicitly after its recompose.
+            SingleComposer = compo.Compose(false);
 
             // Disable the grids' built-in slot interaction; we handle clicks ourselves in
             // OnMouseDown so nothing is moved client-side on these virtual inventories.

@@ -155,15 +155,30 @@ namespace Quartermaster
         {
             if (args.Handled || args.Button != EnumMouseButton.Left) return;
             if (dialog == null || !dialog.IsOpened() || dialog.IsLocateOnly) return;
-            if (!capi.Input.KeyboardKeyState[(int)GlKeys.ShiftLeft] &&
-                !capi.Input.KeyboardKeyState[(int)GlKeys.ShiftRight]) return;
+            // Read the RAW key state: a focused text input (e.g. the ledger's search bar)
+            // marks the Shift keydown event handled, and ClientMain then skips updating the
+            // filtered KeyboardKeyState array entirely — so with the search bar focused,
+            // Shift reads as "not held" there even while physically down. KeyboardKeyStateRaw
+            // is set before GUI dispatch and is what the engine's own text-selection code
+            // reads for the same reason.
+            if (!capi.Input.KeyboardKeyStateRaw[(int)GlKeys.ShiftLeft] &&
+                !capi.Input.KeyboardKeyStateRaw[(int)GlKeys.ShiftRight]) return;
 
-            // CurrentHoveredSlot is a cache refreshed only by mouse-move enter/leave events,
-            // and it can be empty right after the ledger opens even with the cursor on a
-            // slot — the vanilla grid hit-tests clicks itself, so it would still pick the
-            // item up while we saw "no slot hovered". Replay a synthetic mouse-move through
-            // the GUI dialogs (exactly what the engine does on a 1px cursor jiggle) so every
-            // slot grid refreshes its hover state before we read it.
+            // CurrentHoveredSlot is a cache refreshed only by slot enter/leave events, and
+            // slot grids only fire "enter" when the hovered slot *changes*. The hotbar HUD
+            // is never recomposed between ledger sessions, so its grid still remembers the
+            // slot hovered last session while the engine nulled CurrentHoveredSlot on dialog
+            // close — reopen the ledger with the cursor on that same slot and no enter event
+            // ever refires. A move replayed at the cursor position alone (the v1.0.16 fix)
+            // can't heal that, so first replay a move at an off-screen point to make every
+            // grid fire "leave" and forget its remembered slot, then one at the real cursor
+            // position so the grid under it fires a fresh "enter".
+            var moveOut = new MouseEvent(-100, -100);
+            foreach (GuiDialog dlg in capi.Gui.LoadedGuis)
+            {
+                if (!dlg.ShouldReceiveMouseEvents()) continue;
+                dlg.OnMouseMove(moveOut);
+            }
             var move = new MouseEvent(args.X, args.Y);
             foreach (GuiDialog dlg in capi.Gui.LoadedGuis)
             {

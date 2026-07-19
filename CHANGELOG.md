@@ -2,6 +2,11 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.17
+### Fixed
+- Shift+Left-click deposit from the hotbar no longer picks the item up on the first click after opening the ledger. Root cause: the search bar silently regained focus when the item list arrived from the server, and a focused text box swallows the Shift key-press before the game records it — so the whole engine (our deposit hook *and* the vanilla slot grid) saw a plain unshifted click, which picks the stack up. The deposit hook now reads the raw keyboard state (which a focused text box can't hide), and the dialog no longer hands the search bar focus when it recomposes on server replies, page turns or category toggles — so it also stops stealing your movement keys mid-session. Clicking into the search bar and typing works exactly as before.
+- Hardened the hover-slot refresh from v1.0.16: the hotbar keeps its "last hovered slot" memory across ledger sessions (dialog grids are rebuilt fresh each open), so reopening the ledger with the cursor parked on the same slot could leave the hover cache stale. Each shift-click now clears every grid's hover memory before replaying the cursor position.
+
 ## v1.0.16
 ### Fixed
 - The first Shift+Left-click after opening the ledger no longer picks the item up instead of depositing it. The game's "which slot is hovered" cache is only refreshed by mouse-move events and could still be empty on the first click after the dialog opened; the click now refreshes the hover state itself before deciding, so shift-click deposits work from the very first click.
