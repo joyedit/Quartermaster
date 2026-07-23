@@ -2,6 +2,11 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## 1.0.18 — 2026-07-23
+
+- Compatibility release for Vintage Story 1.22.5. Rebuilt against the 1.22.5
+  assemblies; no code changes.
+
 ## v1.0.17
 ### Fixed
 - Shift+Left-click deposit from the hotbar no longer picks the item up on the first click after opening the ledger. Root cause: the search bar silently regained focus when the item list arrived from the server, and a focused text box swallows the Shift key-press before the game records it — so the whole engine (our deposit hook *and* the vanilla slot grid) saw a plain unshifted click, which picks the stack up. The deposit hook now reads the raw keyboard state (which a focused text box can't hide), and the dialog no longer hands the search bar focus when it recomposes on server replies, page turns or category toggles — so it also stops stealing your movement keys mid-session. Clicking into the search bar and typing works exactly as before.
