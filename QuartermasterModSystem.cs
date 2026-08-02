@@ -35,6 +35,9 @@ namespace Quartermaster
         private bool showingExcluded;
         private float tagRefreshAccum;
 
+        // Accumulator for the periodic slot-stats refresh while the ledger is open.
+        private float slotStatsAccum;
+
         // Locate state, kept in sync as containers are opened.
         private string currentItemName;
         private List<ContainerLabel> currentLabels = new List<ContainerLabel>();
@@ -54,7 +57,9 @@ namespace Quartermaster
                .RegisterMessageType(typeof(PacketWithdraw))
                .RegisterMessageType(typeof(PacketDeposit))
                .RegisterMessageType(typeof(PacketExcludedRequest))
-               .RegisterMessageType(typeof(PacketExcludedList));
+               .RegisterMessageType(typeof(PacketExcludedList))
+               .RegisterMessageType(typeof(PacketSlotStatsRequest))
+               .RegisterMessageType(typeof(PacketSlotStats));
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -62,7 +67,8 @@ namespace Quartermaster
             this.capi = api;
             clientChannel = capi.Network.GetChannel("quartermaster")
                 .SetMessageHandler<PacketQuartermasterResponse>(OnQuartermasterDataReceived)
-                .SetMessageHandler<PacketExcludedList>(OnExcludedListReceived);
+                .SetMessageHandler<PacketExcludedList>(OnExcludedListReceived)
+                .SetMessageHandler<PacketSlotStats>(OnSlotStatsReceived);
 
             dialog = new GuiDialogQuartermaster(capi, this);
 
@@ -102,7 +108,8 @@ namespace Quartermaster
                 .SetMessageHandler<PacketQuartermasterRequest>(OnClientRequest)
                 .SetMessageHandler<PacketWithdraw>(OnWithdraw)
                 .SetMessageHandler<PacketDeposit>(OnDeposit)
-                .SetMessageHandler<PacketExcludedRequest>(OnExcludedRequest);
+                .SetMessageHandler<PacketExcludedRequest>(OnExcludedRequest)
+                .SetMessageHandler<PacketSlotStatsRequest>(OnSlotStatsRequest);
 
             sapi.Event.SaveGameLoaded += LoadExcludedPositions;
             sapi.Event.GameWorldSave += SaveExcludedPositions;
@@ -128,6 +135,19 @@ namespace Quartermaster
         private void OnClientTick(float dt)
         {
             UpdateTagOverlay(dt);
+
+            // While the ledger is open, refresh the "Empty slots" label every couple of
+            // seconds so chests placed/broken/filled in range show up without reopening.
+            if (dialog != null && dialog.IsOpened())
+            {
+                slotStatsAccum += dt;
+                if (slotStatsAccum > 2f)
+                {
+                    slotStatsAccum = 0f;
+                    clientChannel?.SendPacket(new PacketSlotStatsRequest());
+                }
+            }
+            else slotStatsAccum = 0f;
 
             if (!capi.Input.MouseButton.Right) return;
 
@@ -394,6 +414,9 @@ namespace Quartermaster
                             // Placed buckets likewise: they hold liquids, empty or not,
                             // and shouldn't show up as storage.
                             if (be is BlockEntityBucket) continue;
+                            // Planters and flowerpots/vases store their planted flower in a
+                            // 1-slot inventory; a withdraw would strip decor out of builds.
+                            if (be is BlockEntityPlantContainer) continue;
                             if (predicate != null && !predicate(be)) continue;
                             // Honor land claims: skip containers the player isn't allowed to use.
                             if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;
@@ -489,7 +512,8 @@ namespace Quartermaster
         {
             BlockEntity be = player.Entity.World.BlockAccessor.GetBlockEntity(pos);
             bool scannable = be != null && !IsProcessingDevice(be) && !(be is BlockEntityBarrel)
-                && !(be is BlockEntityBucket) && GetInventory(be) != null;
+                && !(be is BlockEntityBucket) && !(be is BlockEntityPlantContainer)
+                && GetInventory(be) != null;
             if (!scannable)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup,
@@ -587,11 +611,44 @@ namespace Quartermaster
         private void SendLedger(IServerPlayer player)
         {
             Dictionary<string, QuartermasterItemDTO> consolidated = new Dictionary<string, QuartermasterItemDTO>();
+            int freeSlots = 0, totalSlots = 0;
 
             foreach (var (pos, inv, be) in EnumerateContainers(player))
+            {
                 ScanInventory(inv, consolidated, pos);
+                // Slot stats count only deposit-eligible storage (chests/trunks), so the
+                // "Empty slots" label matches what a deposit could actually fill — racks,
+                // shelves and display cases are browsable but not deposit targets.
+                if (IsStorageContainer(be)) CountSlots(inv, ref freeSlots, ref totalSlots);
+            }
 
-            serverChannel.SendPacket(new PacketQuartermasterResponse { Items = consolidated.Values.ToList(), LocateOnly = config.LocateOnly }, player);
+            serverChannel.SendPacket(new PacketQuartermasterResponse
+            {
+                Items = consolidated.Values.ToList(),
+                LocateOnly = config.LocateOnly,
+                FreeSlots = freeSlots,
+                TotalSlots = totalSlots
+            }, player);
+        }
+
+        private static void CountSlots(IInventory inv, ref int freeSlots, ref int totalSlots)
+        {
+            foreach (var slot in inv)
+            {
+                totalSlots++;
+                if (slot?.Itemstack == null) freeSlots++;
+            }
+        }
+
+        // Cheap periodic refresh for the "Empty slots" label: counts slots without
+        // building the item DTOs of a full ledger scan.
+        private void OnSlotStatsRequest(IServerPlayer player, PacketSlotStatsRequest packet)
+        {
+            int freeSlots = 0, totalSlots = 0;
+            foreach (var (pos, inv, be) in EnumerateContainers(player, IsStorageContainer))
+                CountSlots(inv, ref freeSlots, ref totalSlots);
+
+            serverChannel.SendPacket(new PacketSlotStats { FreeSlots = freeSlots, TotalSlots = totalSlots }, player);
         }
 
         private void ScanInventory(IInventory inventory, Dictionary<string, QuartermasterItemDTO> list, BlockPos pos)
@@ -621,7 +678,10 @@ namespace Quartermaster
             }
         }
 
-        private void OnQuartermasterDataReceived(PacketQuartermasterResponse packet) => dialog?.UpdateDataFromServer(packet.Items, packet.LocateOnly);
+        private void OnQuartermasterDataReceived(PacketQuartermasterResponse packet)
+            => dialog?.UpdateDataFromServer(packet.Items, packet.LocateOnly, packet.FreeSlots, packet.TotalSlots);
+
+        private void OnSlotStatsReceived(PacketSlotStats packet) => dialog?.UpdateSlotStats(packet.FreeSlots, packet.TotalSlots);
 
         private void OnWithdraw(IServerPlayer player, PacketWithdraw packet)
         {

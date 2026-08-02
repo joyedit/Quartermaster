@@ -18,6 +18,22 @@ namespace Quartermaster
     {
         public List<QuartermasterItemDTO> Items = new List<QuartermasterItemDTO>();
         public bool LocateOnly;
+        // Slot stats across the deposit-eligible containers (chests/trunks) in range,
+        // for the "Empty slots" label.
+        public int FreeSlots;
+        public int TotalSlots;
+    }
+
+    // Lightweight periodic refresh of the "Empty slots" label while the ledger is open,
+    // so placing/filling chests in range updates the count without a full ledger rescan.
+    [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
+    public class PacketSlotStatsRequest { }
+
+    [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
+    public class PacketSlotStats
+    {
+        public int FreeSlots;
+        public int TotalSlots;
     }
 
     [ProtoBuf.ProtoContract(ImplicitFields = ProtoBuf.ImplicitFields.AllPublic)]
@@ -125,14 +141,21 @@ namespace Quartermaster
         // The entries currently shown on the visible page, indexed to match the grid slots.
         private List<QuartermasterEntry> currentVisibleEntries = new List<QuartermasterEntry>();
 
+        // Empty/total slot counts across the deposit-eligible containers in range.
+        // -1 = not received yet this session (label stays blank until the first reply).
+        private int freeSlots = -1;
+        private int totalSlots;
+
         public GuiDialogQuartermaster(ICoreClientAPI capi, QuartermasterModSystem system) : base(capi)
         {
             this.modSystem = system;
         }
 
-        public void UpdateDataFromServer(List<QuartermasterItemDTO> data, bool locateOnly)
+        public void UpdateDataFromServer(List<QuartermasterItemDTO> data, bool locateOnly, int freeSlots, int totalSlots)
         {
             this.locateOnly = locateOnly;
+            this.freeSlots = freeSlots;
+            this.totalSlots = totalSlots;
             allEntries.Clear();
             foreach (var dto in data)
             {
@@ -378,6 +401,9 @@ namespace Quartermaster
             ElementBounds depositHintBounds = ElementBounds.Fixed(5, 120, 160, 34);
             ElementBounds depositAllBounds = ElementBounds.Fixed(15, 160, 140, 28);
             ElementBounds helpBounds = ElementBounds.Fixed(10, 205, 155, 350);
+            // Bottom of the left strip, tall enough for the text to wrap to two lines
+            // without the second line running off the dialog's bottom edge.
+            ElementBounds slotStatsBounds = ElementBounds.Fixed(5, 556, 160, 44);
 
             if (depositCellInventory == null)
                 depositCellInventory = new InventoryGeneric(1, "quartermaster-depositcell", capi, null);
@@ -421,7 +447,8 @@ namespace Quartermaster
                 .AddItemSlotGrid(virtualInventory, OnSlotClick, COLS, gridBounds, "itemgrid")
                 .AddSmallButton("Prev", OnPrevPage, prevButtonBounds)
                 .AddSmallButton("Next", OnNextPage, nextButtonBounds)
-                .AddDynamicText(statusText, CairoFont.WhiteSmallText().WithOrientation(EnumTextOrientation.Center), statusLabelBounds, "statusLabel");
+                .AddDynamicText(statusText, CairoFont.WhiteSmallText().WithOrientation(EnumTextOrientation.Center), statusLabelBounds, "statusLabel")
+                .AddDynamicText(SlotStatsText(), centered, slotStatsBounds, "slotStatsLabel");
 
             // Deposit controls only when writes are allowed (LocateOnly hides them).
             if (!locateOnly)
@@ -463,6 +490,22 @@ namespace Quartermaster
             SingleComposer.GetToggleButton("catPlants").SetValue(activeCategories.HasFlag(ItemCategory.Plants));
             SingleComposer.GetToggleButton("catDecor").SetValue(activeCategories.HasFlag(ItemCategory.Decor));
             SingleComposer.GetToggleButton("catPowders").SetValue(activeCategories.HasFlag(ItemCategory.Powders));
+        }
+
+        private string SlotStatsText()
+        {
+            if (freeSlots < 0) return "";
+            return $"Empty slots: {freeSlots:n0} / {totalSlots:n0}";
+        }
+
+        // Called on the periodic slot-stats reply while the dialog is open. Updates the
+        // label text in place — deliberately no ComposeDialog, which would steal focus
+        // from the search bar mid-typing every refresh.
+        public void UpdateSlotStats(int free, int total)
+        {
+            freeSlots = free;
+            totalSlots = total;
+            if (IsOpened()) SingleComposer?.GetDynamicText("slotStatsLabel")?.SetNewText(SlotStatsText());
         }
 
         private void OnSearchChanged(string text)
@@ -574,6 +617,9 @@ namespace Quartermaster
         {
             openTime = capi.World.ElapsedMilliseconds;
             isWaitingForServer = true;
+            // Blank the slot-stats label until this session's first server reply — the
+            // player may have moved, so a count from the previous spot would be wrong.
+            freeSlots = -1;
             // Start each session with a fresh, empty search and no category filters.
             currentSearchText = "";
             activeCategories = ItemCategory.None;

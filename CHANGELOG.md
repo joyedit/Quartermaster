@@ -2,6 +2,14 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.20
+### Fixed
+- The desk no longer takes plants out of planters and flowerpots/vases. Both use the game's `PlantContainer` block entity, which stores the planted flower in a real 1-slot inventory — so planted flowers showed up in the ledger as stock, and a withdraw (especially "withdraw all") swept them out of every planter and vase in range. Planters and flowerpots are now excluded from scanning entirely, like barrels and buckets: their contents no longer appear in the ledger and can't be located or withdrawn. Deposits were never affected (they only ever target chests and trunks).
+
+## v1.0.19
+### Added
+- **"Empty slots" counter.** The ledger now shows how much free storage is left in range, as `Empty slots: <free> / <total>` in the bottom-left of the window. It counts only deposit-eligible storage (chests and trunks — the containers a deposit could actually fill), honoring the same exclusions as the rest of the desk (tagged containers, claims, barrels, buckets, work stations). The count refreshes automatically every couple of seconds while the ledger is open, so placing a new chest in range — or watching storage fill up — updates the number live without reopening, and without disturbing the search bar or your place in the list.
+
 ## 1.0.18 — 2026-07-23
 
 - Compatibility release for Vintage Story 1.22.5. Rebuilt against the 1.22.5
