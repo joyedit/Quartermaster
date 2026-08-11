@@ -2,11 +2,18 @@ namespace Quartermaster
 {
     public class QuartermasterConfig
     {
-        // Vertical range in blocks above and below the player position
-        public int VerticalRange { get; set; } = 5;
+        // Vertical range in blocks above and below the player position. Note this
+        // selects whole 32-block chunk layers, not individual blocks: a value below 32
+        // leaves coverage dependent on where in the chunk you happen to stand, so a
+        // container one storey down can drop out of the ledger as you climb stairs.
+        // 32 is the smallest value that always reaches one full layer either way.
+        public int VerticalRange { get; set; } = 32;
 
-        // Horizontal scan radius in chunks (1 chunk = 32 blocks)
-        public int ChunkRadius { get; set; } = 2;
+        // Horizontal scan radius in chunks (1 chunk = 32 blocks). Like VerticalRange
+        // this is chunk-quantized and centered on the player's chunk, so containers
+        // near the edge pop in and out as you cross a seam; 3 keeps a normal base
+        // comfortably inside the box.
+        public int ChunkRadius { get; set; } = 3;
 
         // When true, the desk is read-only: browse, search, filter, and locate still work
         // but withdraw and deposit are disabled. Enforced server-side, so a modified client

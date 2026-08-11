@@ -54,8 +54,8 @@ The ingredients are consumed, but the tag itself is reusable and never wears out
 
 `ModConfig/QuartermasterConfig.json`:
 
-- **`ChunkRadius`** (default `2`) — horizontal scan radius in chunks (1 chunk = 32 blocks).
-- **`VerticalRange`** (default `5`) — vertical range in blocks above/below the player.
+- **`ChunkRadius`** (default `3`) — horizontal scan radius in chunks (1 chunk = 32 blocks), a 7×7 box ~224 blocks across.
+- **`VerticalRange`** (default `32`) — vertical range in blocks above/below the player. Chunk-quantized, so values below 32 make coverage depend on where in the 32-block layer you stand.
 - **`LocateOnly`** (default `false`) — read-only mode; disables withdraw and deposit, server-enforced.
 - **`HonorClaims`** (default `true`) — respects land claims; containers you don't have permission to use are hidden and inaccessible.
 

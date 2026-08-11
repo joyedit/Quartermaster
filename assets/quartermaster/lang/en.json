@@ -28,5 +28,5 @@
   "quartermaster-hb-locate-text": "Middle-click any item to close the ledger and highlight the containers holding it, with blue markers, floating text labels visible through walls, and temporary map waypoints (up to 20 locations). Labels fade out between 20–40 blocks. Right-click a highlighted block to dismiss it, or open a container to clear its markers automatically.",
 
   "quartermaster-hb-range-title": "Scan range",
-  "quartermaster-hb-range-text": "By default the desk scans a 5×5 area of chunks (~160 blocks across) centered on your chunk, and roughly the 32-block vertical layer you're standing in. Items stored well above or below you may not appear — move closer or raise VerticalRange. Processing stations (firepits, ovens, forges, querns, anvils, etc.) are deliberately skipped. Scan range is configurable in ModConfig/QuartermasterConfig.json."
+  "quartermaster-hb-range-text": "By default the desk scans a 7×7 area of chunks (~224 blocks across) centered on your chunk, and roughly 96 blocks vertically — the 32-block layer you're standing in plus one above and one below. Items stored well above or below that may not appear — move closer or raise VerticalRange. Processing stations (firepits, ovens, forges, querns, anvils, etc.) are deliberately skipped. Scan range is configurable in ModConfig/QuartermasterConfig.json."
 }

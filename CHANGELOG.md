@@ -2,6 +2,13 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.21
+### Fixed
+- **Tall builds no longer lose their storage from the upper floors.** `VerticalRange` selects whole 32-block chunk layers rather than individual blocks, so the old default of `5` only reached past a chunk seam when you happened to be standing within 5 blocks of it. In a tall house that meant the ledger could go completely empty — not filtered, but finding zero containers — simply from walking upstairs: at Y=201 the desk scanned only blocks 192–223, while the trunks sat in 160–191. The default is now `32`, the smallest value that always reaches one full layer either way, giving a consistent ~96-block vertical reach regardless of where in a layer you stand.
+- Widened the horizontal default from `ChunkRadius` `2` to `3` (a 7×7 box, ~224 blocks across). The scan box is centered on the player's chunk and is likewise chunk-quantized, so containers near the fringe of a large base would pop in and out of the ledger as you crossed a chunk seam.
+
+Existing worlds keep the values already written to `ModConfig/QuartermasterConfig.json` — edit `VerticalRange` to `32` and `ChunkRadius` to `3` there, or delete the file to regenerate it with the new defaults.
+
 ## v1.0.20
 ### Fixed
 - The desk no longer takes plants out of planters and flowerpots/vases. Both use the game's `PlantContainer` block entity, which stores the planted flower in a real 1-slot inventory — so planted flowers showed up in the ledger as stock, and a withdraw (especially "withdraw all") swept them out of every planter and vase in range. Planters and flowerpots are now excluded from scanning entirely, like barrels and buckets: their contents no longer appear in the ledger and can't be located or withdrawn. Deposits were never affected (they only ever target chests and trunks).
