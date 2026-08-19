@@ -187,7 +187,9 @@ namespace Quartermaster
 
             allEntries.Sort((a, b) => string.Compare(a.Stack.GetName(), b.Stack.GetName(), StringComparison.OrdinalIgnoreCase));
             isWaitingForServer = false;
-            FilterItems(currentSearchText);
+            // Keep the page the player is on — the search text hasn't changed, this is just
+            // refreshed counts, so re-filter in place instead of jumping back to page 1.
+            ApplyFilters(false);
 
             if (IsOpened()) ComposeDialog();
         }
@@ -322,7 +324,12 @@ namespace Quartermaster
 
         // Search text (substring) AND category selection (OR across active categories).
         // No active categories means "All".
-        private void ApplyFilters()
+        //
+        // resetPage: true when the player changed what's being listed (search, category)
+        // — the old page number is meaningless against a new result set. False for a plain
+        // data refresh from the server (e.g. after a withdraw), where the player is still
+        // browsing and must stay on the page they were on.
+        private void ApplyFilters(bool resetPage = true)
         {
             IEnumerable<QuartermasterEntry> query = allEntries;
 
@@ -333,7 +340,16 @@ namespace Quartermaster
                 query = query.Where(e => (e.Category & activeCategories) != 0);
 
             filteredEntries = query.ToList();
-            currentPage = 0;
+
+            if (resetPage) currentPage = 0;
+            else
+            {
+                // Withdrawing the last of an item can shrink the list past the current page.
+                int lastPage = (int)Math.Ceiling((double)filteredEntries.Count / itemsPerPage) - 1;
+                if (lastPage < 0) lastPage = 0;
+                if (currentPage > lastPage) currentPage = lastPage;
+            }
+
             UpdateView();
         }
 

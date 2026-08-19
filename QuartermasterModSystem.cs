@@ -417,6 +417,14 @@ namespace Quartermaster
                             // Planters and flowerpots/vases store their planted flower in a
                             // 1-slot inventory; a withdraw would strip decor out of builds.
                             if (be is BlockEntityPlantContainer) continue;
+                            // Bookshelves are a BlockEntityDisplay, so they read as ordinary
+                            // storage — but the books on them are a library the player arranged
+                            // by hand, and a withdraw (especially "withdraw all") would empty
+                            // every shelf in range. Excluded like planters: no browse, locate,
+                            // or withdraw. (Purely decorative clutter bookshelves use
+                            // BEBehaviorClutterBookshelf and have no inventory, so they were
+                            // never scanned in the first place.)
+                            if (be is BlockEntityBookshelf) continue;
                             if (predicate != null && !predicate(be)) continue;
                             // Honor land claims: skip containers the player isn't allowed to use.
                             if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;

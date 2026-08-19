@@ -2,6 +2,11 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.22
+### Fixed
+- Withdrawing an item no longer throws you back to page 1. Every withdraw triggers a fresh item list from the server, and that refresh was re-running the filter with a page reset — correct when *you* change the search or a category, wrong for a plain data refresh. The ledger now keeps your place while you pull several items off the same page, and only clamps back a page if the list actually shrank past the one you were on.
+- The desk no longer takes books off bookshelves. A bookshelf is a `BlockEntityDisplay` under the hood, so it read as ordinary storage: its books were listed in the ledger and a withdraw — a "withdraw all" in particular — would strip every shelf in range. Bookshelves are now excluded outright, like planters and vases in v1.0.20: their contents don't appear in the ledger and can't be located or withdrawn. Purely decorative clutter bookshelves have no inventory and were never affected.
+
 ## v1.0.21
 ### Fixed
 - **Tall builds no longer lose their storage from the upper floors.** `VerticalRange` selects whole 32-block chunk layers rather than individual blocks, so the old default of `5` only reached past a chunk seam when you happened to be standing within 5 blocks of it. In a tall house that meant the ledger could go completely empty — not filtered, but finding zero containers — simply from walking upstairs: at Y=201 the desk scanned only blocks 192–223, while the trunks sat in 160–191. The default is now `32`, the smallest value that always reaches one full layer either way, giving a consistent ~96-block vertical reach regardless of where in a layer you stand.
