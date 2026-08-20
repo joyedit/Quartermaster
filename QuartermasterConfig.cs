@@ -20,6 +20,19 @@ namespace Quartermaster
         // still cannot move items. The client UI hides the deposit controls.
         public bool LocateOnly { get; set; } = false;
 
+        // Flips what the Quartermaster's Tag means, i.e. how the ledger is curated.
+        //
+        // false (default, opt-out): the desk scans every container in range, and a tag
+        // HIDES the ones you tag. Good when most of your storage should be on the ledger.
+        //
+        // true (opt-in): the desk scans nothing by default, and a tag ADDS a container to
+        // the ledger. Good when you want the desk pointed at a few specific chests.
+        //
+        // Each mode keeps its own tag list in the world save, so switching back and forth
+        // is non-destructive: flipping to opt-in leaves your exclusions dormant (the ledger
+        // starts empty until you tag something in), and flipping back restores them intact.
+        public bool TagOptInMode { get; set; } = false;
+
         // When true, the desk honors land claims: containers the player isn't allowed to use
         // (e.g. inside someone else's claim) are hidden and can't be accessed. Owners/granted
         // players and unclaimed land are unaffected. Defers to the game's own claim permissions.

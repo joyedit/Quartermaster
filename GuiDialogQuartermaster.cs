@@ -22,6 +22,10 @@ namespace Quartermaster
         // for the "Empty slots" label.
         public int FreeSlots;
         public int TotalSlots;
+        // Tag mode, and how many containers the desk could see this scan. Together these
+        // let the ledger tell "opt-in, nothing tagged yet" apart from "genuinely empty".
+        public bool TagOptIn;
+        public int ScannedContainers;
     }
 
     // Lightweight periodic refresh of the "Empty slots" label while the ledger is open,
@@ -82,6 +86,9 @@ namespace Quartermaster
     public class PacketExcludedList
     {
         public List<SimplePos> Positions = new List<SimplePos>();
+        // Drives the overlay wording: tagged containers are "Excluded" in opt-out mode
+        // and "Included" in opt-in mode.
+        public bool TagOptIn;
     }
 
     [Flags]
@@ -146,16 +153,23 @@ namespace Quartermaster
         private int freeSlots = -1;
         private int totalSlots;
 
+        // Tag mode as reported by the server, and the container count behind the last scan.
+        private bool tagOptIn;
+        private int scannedContainers;
+
         public GuiDialogQuartermaster(ICoreClientAPI capi, QuartermasterModSystem system) : base(capi)
         {
             this.modSystem = system;
         }
 
-        public void UpdateDataFromServer(List<QuartermasterItemDTO> data, bool locateOnly, int freeSlots, int totalSlots)
+        public void UpdateDataFromServer(List<QuartermasterItemDTO> data, bool locateOnly, int freeSlots, int totalSlots,
+                                         bool tagOptIn, int scannedContainers)
         {
             this.locateOnly = locateOnly;
             this.freeSlots = freeSlots;
             this.totalSlots = totalSlots;
+            this.tagOptIn = tagOptIn;
+            this.scannedContainers = scannedContainers;
             allEntries.Clear();
             foreach (var dto in data)
             {
@@ -427,7 +441,13 @@ namespace Quartermaster
             int totalPages = (int)Math.Ceiling((double)filteredEntries.Count / itemsPerPage);
             if (totalPages < 1) totalPages = 1;
 
-            string statusText = isWaitingForServer ? "Scanning Storage..." : $"Page {currentPage + 1} / {totalPages} ({filteredEntries.Count} Items)";
+            // An opt-in ledger with nothing tagged is empty by design, not broken — say so
+            // instead of showing "Page 1 / 1 (0 Items)" over a blank grid.
+            bool nothingTagged = tagOptIn && scannedContainers == 0 && !isWaitingForServer;
+
+            string statusText = isWaitingForServer ? "Scanning Storage..."
+                : nothingTagged ? "Opt-in mode: no containers tagged"
+                : $"Page {currentPage + 1} / {totalPages} ({filteredEntries.Count} Items)";
             string helpText = locateOnly
                 ? "Read-only station.\n\n" +
                   "Locate:\n" +
@@ -477,6 +497,18 @@ namespace Quartermaster
             }
 
             compo.AddStaticText(helpText, CairoFont.WhiteDetailText(), helpBounds, "helpText");
+
+            // The grid is empty in this state, so the explanation goes where the items would
+            // be — the one place the player is already looking.
+            if (nothingTagged)
+            {
+                compo.AddStaticText(
+                    "This desk is in opt-in mode.\n\n" +
+                    "It only lists storage you have tagged, and nothing is tagged yet.\n\n" +
+                    "Hold a Quartermaster's Tag and sneak + right-click a chest to put it on the ledger.",
+                    CairoFont.WhiteSmallText().WithOrientation(EnumTextOrientation.Center),
+                    ElementBounds.Fixed(leftMargin + 30, 230, gridWidth - 60, 200), "optInHint");
+            }
 
             // Compose(false): never auto-focus the first element (the search bar). The
             // dialog recomposes on server replies, paging and category toggles, and the

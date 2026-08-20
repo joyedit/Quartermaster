@@ -2,6 +2,15 @@
 
 All notable changes to Quartermaster are documented here. Newest first.
 
+## v1.0.23
+### Added
+- **Opt-in tag mode.** New config flag `TagOptInMode` (default `false`) flips what the Quartermaster's Tag means. Left alone, nothing changes: the desk scans everything in range and a tag *hides* a container, exactly as before. Set it to `true` and the desk starts out seeing nothing — a tag is what *puts* a container on the ledger, so you can point the desk at a handful of chosen chests and leave everything else off it. Same tag item, same sneak + right-click, same through-wall label (now reading "Included" rather than "Excluded").
+  - Each mode keeps its **own** tag list in the world save (`quartermasterIncluded` / `quartermasterExcluded`). Flipping the setting is therefore non-destructive and reversible — it never inverts your existing tags, which would have turned the chests you deliberately hid into the only ones visible. Switch to opt-in and your exclusions lie dormant; switch back and they return intact.
+  - An opt-in ledger with nothing tagged yet says so, in the grid and in the status line, instead of showing an empty page that looks like a bug.
+
+### Fixed
+- The tag now refuses bookshelves, matching the v1.0.22 scan change. `ToggleTag` kept its own copy of the "is this scannable?" test, so you could tag a bookshelf and be told it was "returned to the ledger" when the desk would never list it either way. Both paths now share one `IsScannableKind` check.
+
 ## v1.0.22
 ### Fixed
 - Withdrawing an item no longer throws you back to page 1. Every withdraw triggers a fresh item list from the server, and that refresh was re-running the filter with a page reset — correct when *you* change the search or a category, wrong for a plain data refresh. The ledger now keeps your place while you pull several items off the same page, and only clamps back a page if the list actually shrank past the one you were on.

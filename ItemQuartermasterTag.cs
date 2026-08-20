@@ -5,13 +5,15 @@ using Vintagestory.API.Server;
 namespace Quartermaster
 {
     // A reusable tool for curating what the Quartermaster's Desk can see. Sneak + right-click
-    // a container to toggle it between included and excluded. The engine always gives a plain
+    // a container to toggle its tag. What the tag means is set by config.TagOptInMode: in the
+    // default opt-out mode tagging HIDES a container from the desk; in opt-in mode tagging is
+    // what puts a container on the ledger in the first place. The engine always gives a plain
     // right-click to the block first (that's how chests open), so the tag can only ever act on
     // the sneak-click path — and there, HeldPriorityInteract makes it win over blocks with
     // their own sneak interactions (tool racks take/place a tool, ground-storage piles add an
     // item), which otherwise could never be tagged. Plain right-click keeps its normal
     // behavior, so containers still open while the tag is held. While the tag is held, nearby
-    // excluded containers show a floating "Excluded" label (see QuartermasterModSystem).
+    // tagged containers show a floating "Excluded"/"Included" label (see QuartermasterModSystem).
     // The toggle runs server-side only, so it's authoritative.
     public class ItemQuartermasterTag : Item
     {
@@ -38,7 +40,7 @@ namespace Quartermaster
 
             if ((byEntity as EntityPlayer)?.Player is IServerPlayer player)
             {
-                api.ModLoader.GetModSystem<QuartermasterModSystem>().ToggleExcluded(player, blockSel.Position);
+                api.ModLoader.GetModSystem<QuartermasterModSystem>().ToggleTag(player, blockSel.Position);
             }
         }
 

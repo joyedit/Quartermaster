@@ -26,9 +26,13 @@ namespace Quartermaster
         private ICoreServerAPI sapi;
         private static QuartermasterConfig config;
 
-        // Containers players have hidden from the desk with a Quartermaster's Tag,
-        // keyed "x,y,z". Server-side, persisted in the world save.
-        private HashSet<string> excludedPositions = new HashSet<string>();
+        // Containers players have marked with a Quartermaster's Tag, keyed "x,y,z".
+        // What a tag MEANS depends on config.TagOptInMode: in the default opt-out mode
+        // these are the containers hidden from the desk; in opt-in mode they are the only
+        // containers the desk sees. Each mode persists under its own save key (TagSaveKey)
+        // so flipping the setting never silently inverts a world's existing tags.
+        // Server-side, persisted in the world save.
+        private HashSet<string> taggedPositions = new HashSet<string>();
 
         // Client-side held-tag overlay state.
         private bool holdingTag;
@@ -111,13 +115,13 @@ namespace Quartermaster
                 .SetMessageHandler<PacketExcludedRequest>(OnExcludedRequest)
                 .SetMessageHandler<PacketSlotStatsRequest>(OnSlotStatsRequest);
 
-            sapi.Event.SaveGameLoaded += LoadExcludedPositions;
-            sapi.Event.GameWorldSave += SaveExcludedPositions;
+            sapi.Event.SaveGameLoaded += LoadTaggedPositions;
+            sapi.Event.GameWorldSave += SaveTaggedPositions;
 
             // Exclusions are keyed to a position, not a block entity — drop the entry the
             // moment its block is broken (or something new is placed over an excluded spot,
             // e.g. after an explosion) so a replacement container never inherits it. The lazy
-            // prune in SendExcludedList remains as a backstop for other removal paths.
+            // prune in SendTaggedList remains as a backstop for other removal paths.
             sapi.Event.DidBreakBlock += OnServerBlockBroken;
             sapi.Event.DidPlaceBlock += OnServerBlockPlaced;
         }
@@ -227,10 +231,11 @@ namespace Quartermaster
             args.Handled = true;
         }
 
-        // While the player holds a Quartermaster's Tag, nearby excluded containers show an
-        // "Excluded" label (reusing the through-wall label renderer). The list refreshes on
-        // equip and every couple of seconds while held (so it tracks toggles and newly loaded
-        // areas); putting the tag away restores the normal locate labels.
+        // While the player holds a Quartermaster's Tag, nearby tagged containers show an
+        // "Excluded" (opt-out) or "Included" (opt-in) label, reusing the through-wall label
+        // renderer. The list refreshes on equip and every couple of seconds while held (so it
+        // tracks toggles and newly loaded areas); putting the tag away restores the normal
+        // locate labels.
         private void UpdateTagOverlay(float dt)
         {
             bool holding = capi.World.Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible is ItemQuartermasterTag;
@@ -258,7 +263,8 @@ namespace Quartermaster
             if (!holdingTag) return;
             showingExcluded = true;
 
-            string text = Lang.Get("quartermaster:tag-label-excluded");
+            string text = Lang.Get(packet.TagOptIn ? "quartermaster:tag-label-included"
+                                                   : "quartermaster:tag-label-excluded");
             var labels = packet.Positions
                 .Select(p => new ContainerLabel { X = p.X, Y = p.Y, Z = p.Z, Text = text })
                 .ToList();
@@ -402,29 +408,17 @@ namespace Quartermaster
                         foreach (var entry in chunk.BlockEntities) {
                             BlockEntity be = entry.Value;
                             if (be == null) continue;
-                            // Player-tagged exclusions (Quartermaster's Tag): the container is
-                            // invisible to the desk — no browse, locate, withdraw, or deposit.
-                            if (excludedPositions.Contains(PosKey(entry.Key))) continue;
-                            // Never index or touch work-station inventories (cooking pots on a
-                            // firepit, ore in a bloomery, a workitem on an anvil, etc.).
-                            if (IsProcessingDevice(be)) continue;
-                            // Barrels are excluded too: they hold liquids and sealed
-                            // curing/fermenting recipes, so pulling from them is destructive.
-                            if (be is BlockEntityBarrel) continue;
-                            // Placed buckets likewise: they hold liquids, empty or not,
-                            // and shouldn't show up as storage.
-                            if (be is BlockEntityBucket) continue;
-                            // Planters and flowerpots/vases store their planted flower in a
-                            // 1-slot inventory; a withdraw would strip decor out of builds.
-                            if (be is BlockEntityPlantContainer) continue;
-                            // Bookshelves are a BlockEntityDisplay, so they read as ordinary
-                            // storage — but the books on them are a library the player arranged
-                            // by hand, and a withdraw (especially "withdraw all") would empty
-                            // every shelf in range. Excluded like planters: no browse, locate,
-                            // or withdraw. (Purely decorative clutter bookshelves use
-                            // BEBehaviorClutterBookshelf and have no inventory, so they were
-                            // never scanned in the first place.)
-                            if (be is BlockEntityBookshelf) continue;
+                            // Block kinds the desk must never touch at all (work stations,
+                            // barrels, buckets, planters, bookshelves) — see IsScannableKind.
+                            if (!IsScannableKind(be)) continue;
+                            // The Quartermaster's Tag curates what the desk sees, and the
+                            // config decides which way round that works. Opt-out (default):
+                            // a tagged container is invisible to the desk. Opt-in: the tag
+                            // list is a whitelist and everything untagged is invisible.
+                            // Either way "invisible" is total — no browse, locate, withdraw,
+                            // or deposit — because every one of those paths comes through here.
+                            bool tagged = taggedPositions.Contains(PosKey(entry.Key));
+                            if (config.TagOptInMode ? !tagged : tagged) continue;
                             if (predicate != null && !predicate(be)) continue;
                             // Honor land claims: skip containers the player isn't allowed to use.
                             if (config.HonorClaims && !HasClaimAccess(player, entry.Key)) continue;
@@ -475,6 +469,30 @@ namespace Quartermaster
                 == EnumWorldAccessResponse.Granted;
         }
 
+        // Block kinds the desk never scans, whatever the tag settings say. Shared by the
+        // scan itself and by ToggleTag, so a player can't tag a block the desk would then
+        // ignore anyway (which would report success and do nothing visible).
+        //   - Work stations hold items mid-process, not in storage.
+        //   - Barrels hold liquids and sealed curing/fermenting recipes.
+        //   - Placed buckets hold liquids, empty or not.
+        //   - Planters and flowerpots/vases keep their planted flower in a 1-slot
+        //     inventory; a withdraw would strip decor out of builds.
+        //   - Bookshelves are a BlockEntityDisplay and so read as ordinary storage, but
+        //     their books are a library arranged by hand and "withdraw all" would empty
+        //     every shelf in range. (Purely decorative clutter bookshelves use
+        //     BEBehaviorClutterBookshelf, have no inventory, and were never scanned.)
+        // Says nothing about whether the block actually has an inventory — callers that
+        // need one still go through GetInventory.
+        private static bool IsScannableKind(BlockEntity be)
+        {
+            return be != null
+                && !IsProcessingDevice(be)
+                && !(be is BlockEntityBarrel)
+                && !(be is BlockEntityBucket)
+                && !(be is BlockEntityPlantContainer)
+                && !(be is BlockEntityBookshelf);
+        }
+
         private static bool IsProcessingDevice(BlockEntity be)
         {
             return be is BlockEntityFirepit
@@ -492,36 +510,41 @@ namespace Quartermaster
 
         private static string PosKey(BlockPos pos) => $"{pos.X},{pos.Y},{pos.Z}";
 
-        private void LoadExcludedPositions()
+        // Each tag mode owns a separate save key. Sharing one list would mean flipping
+        // TagOptInMode inverts every tag in the world — the chests a player deliberately
+        // hid would become the only ones visible. With separate keys the switch is
+        // non-destructive and reversible: the other mode's list simply lies dormant.
+        private static string TagSaveKey =>
+            config.TagOptInMode ? "quartermasterIncluded" : "quartermasterExcluded";
+
+        private void LoadTaggedPositions()
         {
             try
             {
-                byte[] data = sapi.WorldManager.SaveGame.GetData("quartermasterExcluded");
+                byte[] data = sapi.WorldManager.SaveGame.GetData(TagSaveKey);
                 if (data != null)
-                    excludedPositions = new HashSet<string>(SerializerUtil.Deserialize<List<string>>(data));
+                    taggedPositions = new HashSet<string>(SerializerUtil.Deserialize<List<string>>(data));
             }
             catch (Exception ex)
             {
-                Mod.Logger.Error("[Quartermaster] Failed to load excluded-container list: {0}", ex);
-                excludedPositions = new HashSet<string>();
+                Mod.Logger.Error("[Quartermaster] Failed to load tagged-container list: {0}", ex);
+                taggedPositions = new HashSet<string>();
             }
         }
 
-        private void SaveExcludedPositions()
+        private void SaveTaggedPositions()
         {
-            sapi.WorldManager.SaveGame.StoreData("quartermasterExcluded", SerializerUtil.Serialize(excludedPositions.ToList()));
+            sapi.WorldManager.SaveGame.StoreData(TagSaveKey, SerializerUtil.Serialize(taggedPositions.ToList()));
         }
 
         // Toggles a container in or out of the ledger. Called server-side by
         // ItemQuartermasterTag when a player sneak-clicks a block while holding a tag.
         // Only blocks the desk would actually scan can be tagged, and claim access is
         // checked so players can't tag containers they couldn't open by hand.
-        public void ToggleExcluded(IServerPlayer player, BlockPos pos)
+        public void ToggleTag(IServerPlayer player, BlockPos pos)
         {
             BlockEntity be = player.Entity.World.BlockAccessor.GetBlockEntity(pos);
-            bool scannable = be != null && !IsProcessingDevice(be) && !(be is BlockEntityBarrel)
-                && !(be is BlockEntityBucket) && !(be is BlockEntityPlantContainer)
-                && GetInventory(be) != null;
+            bool scannable = IsScannableKind(be) && GetInventory(be) != null;
             if (!scannable)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup,
@@ -536,37 +559,42 @@ namespace Quartermaster
             }
 
             string key = PosKey(pos);
-            bool nowExcluded = excludedPositions.Add(key);
-            if (!nowExcluded) excludedPositions.Remove(key);
-            SaveExcludedPositions();
+            bool nowTagged = taggedPositions.Add(key);
+            if (!nowTagged) taggedPositions.Remove(key);
+            SaveTaggedPositions();
 
-            player.SendMessage(GlobalConstants.GeneralChatGroup,
-                nowExcluded ? "Quartermaster: container excluded from the ledger."
-                            : "Quartermaster: container returned to the ledger.",
-                EnumChatType.Notification);
+            // A tag means the opposite thing in each mode, so say what actually happened
+            // rather than a generic "toggled".
+            string message = config.TagOptInMode
+                ? (nowTagged ? "Quartermaster: container added to the ledger."
+                             : "Quartermaster: container removed from the ledger.")
+                : (nowTagged ? "Quartermaster: container excluded from the ledger."
+                             : "Quartermaster: container returned to the ledger.");
+            player.SendMessage(GlobalConstants.GeneralChatGroup, message, EnumChatType.Notification);
 
             // Keep the held-tag overlay in sync immediately.
-            SendExcludedList(player);
+            SendTaggedList(player);
         }
 
         private void OnServerBlockBroken(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel)
-            => RemoveExclusionAt(blockSel?.Position);
+            => RemoveTagAt(blockSel?.Position);
 
         private void OnServerBlockPlaced(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel, ItemStack withItemStack)
-            => RemoveExclusionAt(blockSel?.Position);
+            => RemoveTagAt(blockSel?.Position);
 
-        private void RemoveExclusionAt(BlockPos pos)
+        private void RemoveTagAt(BlockPos pos)
         {
-            if (pos == null || !excludedPositions.Remove(PosKey(pos))) return;
-            SaveExcludedPositions();
+            if (pos == null || !taggedPositions.Remove(PosKey(pos))) return;
+            SaveTaggedPositions();
         }
 
-        private void OnExcludedRequest(IServerPlayer player, PacketExcludedRequest packet) => SendExcludedList(player);
+        private void OnExcludedRequest(IServerPlayer player, PacketExcludedRequest packet) => SendTaggedList(player);
 
-        // Sends the excluded positions near the player, for the held-tag label overlay.
+        // Sends the tagged positions near the player, for the held-tag label overlay
+        // (labelled "Excluded" or "Included" client-side depending on the tag mode).
         // Also lazily prunes entries whose container no longer exists — but only when the
         // chunk is loaded, so a chest in an unloaded area is never mistaken for a removed one.
-        private void SendExcludedList(IServerPlayer player)
+        private void SendTaggedList(IServerPlayer player)
         {
             var accessor = player.Entity.World.BlockAccessor;
             BlockPos pPos = player.Entity.Pos.AsBlockPos;
@@ -575,7 +603,7 @@ namespace Quartermaster
             var nearby = new List<SimplePos>();
             var stale = new List<string>();
 
-            foreach (string key in excludedPositions)
+            foreach (string key in taggedPositions)
             {
                 string[] parts = key.Split(',');
                 if (parts.Length != 3
@@ -606,11 +634,11 @@ namespace Quartermaster
 
             if (stale.Count > 0)
             {
-                foreach (string key in stale) excludedPositions.Remove(key);
-                SaveExcludedPositions();
+                foreach (string key in stale) taggedPositions.Remove(key);
+                SaveTaggedPositions();
             }
 
-            serverChannel.SendPacket(new PacketExcludedList { Positions = nearby }, player);
+            serverChannel.SendPacket(new PacketExcludedList { Positions = nearby, TagOptIn = config.TagOptInMode }, player);
         }
 
         private void OnClientRequest(IServerPlayer player, PacketQuartermasterRequest packet) => SendLedger(player);
@@ -620,9 +648,14 @@ namespace Quartermaster
         {
             Dictionary<string, QuartermasterItemDTO> consolidated = new Dictionary<string, QuartermasterItemDTO>();
             int freeSlots = 0, totalSlots = 0;
+            // How many containers the desk could actually see this scan. In opt-in mode a
+            // zero here means "nothing tagged yet", which the ledger explains rather than
+            // showing a bare empty grid that looks like a bug.
+            int scannedContainers = 0;
 
             foreach (var (pos, inv, be) in EnumerateContainers(player))
             {
+                scannedContainers++;
                 ScanInventory(inv, consolidated, pos);
                 // Slot stats count only deposit-eligible storage (chests/trunks), so the
                 // "Empty slots" label matches what a deposit could actually fill — racks,
@@ -635,7 +668,9 @@ namespace Quartermaster
                 Items = consolidated.Values.ToList(),
                 LocateOnly = config.LocateOnly,
                 FreeSlots = freeSlots,
-                TotalSlots = totalSlots
+                TotalSlots = totalSlots,
+                TagOptIn = config.TagOptInMode,
+                ScannedContainers = scannedContainers
             }, player);
         }
 
@@ -687,7 +722,8 @@ namespace Quartermaster
         }
 
         private void OnQuartermasterDataReceived(PacketQuartermasterResponse packet)
-            => dialog?.UpdateDataFromServer(packet.Items, packet.LocateOnly, packet.FreeSlots, packet.TotalSlots);
+            => dialog?.UpdateDataFromServer(packet.Items, packet.LocateOnly, packet.FreeSlots, packet.TotalSlots,
+                                            packet.TagOptIn, packet.ScannedContainers);
 
         private void OnSlotStatsReceived(PacketSlotStats packet) => dialog?.UpdateSlotStats(packet.FreeSlots, packet.TotalSlots);
 
