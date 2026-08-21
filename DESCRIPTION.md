@@ -56,6 +56,7 @@ The ingredients are consumed, but the tag itself is reusable and never wears out
 
 - **`ChunkRadius`** (default `3`) — horizontal scan radius in chunks (1 chunk = 32 blocks), a 7×7 box ~224 blocks across.
 - **`VerticalRange`** (default `32`) — vertical range in blocks above/below the player. Chunk-quantized, so values below 32 make coverage depend on where in the 32-block layer you stand.
+- **`ExcludedBlockCodes`** (defaults to Food Shelves' barrel and tun racks) — wildcard block codes the desk never scans, so you can exclude modded storage it handles badly without waiting on a fix.
 - **`TagOptInMode`** (default `false`) — flips the Quartermaster's Tag from *hide this container* (opt-out) to *show only this container* (opt-in). In opt-in mode the desk lists nothing until you tag chests in. Each mode remembers its own tags, so you can switch back without losing either list.
 - **`LocateOnly`** (default `false`) — read-only mode; disables withdraw and deposit, server-enforced.
 - **`HonorClaims`** (default `true`) — respects land claims; containers you don't have permission to use are hidden and inaccessible.

@@ -33,6 +33,24 @@ namespace Quartermaster
         // starts empty until you tag something in), and flipping back restores them intact.
         public bool TagOptInMode { get; set; } = false;
 
+        // Block codes the desk must never scan, as wildcard patterns matched against the
+        // full block code ("domain:path"), case-insensitive. `*` matches any run of
+        // characters — e.g. "*barrelrack*" or "foodshelves:*".
+        //
+        // This is the escape hatch for modded storage the desk handles badly. The defaults
+        // cover Food Shelves' barrel and tun racks: those hold barrels, so they carry all
+        // the problems vanilla barrels do (liquids, sealed curing/fermenting recipes) and
+        // additionally let the desk pull the barrel itself out of the rack, which leaves
+        // the rack's liquid in a broken state.
+        //
+        // Add to this list rather than waiting on a mod update when some other container
+        // misbehaves; set it to [] to scan everything the desk otherwise allows.
+        public string[] ExcludedBlockCodes { get; set; } = new string[]
+        {
+            "*barrelrack*",
+            "*tunrack*"
+        };
+
         // When true, the desk honors land claims: containers the player isn't allowed to use
         // (e.g. inside someone else's claim) are hidden and can't be accessed. Owners/granted
         // players and unclaimed land are unaffected. Defers to the game's own claim permissions.

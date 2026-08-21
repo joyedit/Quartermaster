@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -411,6 +412,9 @@ namespace Quartermaster
                             // Block kinds the desk must never touch at all (work stations,
                             // barrels, buckets, planters, bookshelves) — see IsScannableKind.
                             if (!IsScannableKind(be)) continue;
+                            // Server-configured exclusions by block code, for modded storage
+                            // the desk handles badly (see config.ExcludedBlockCodes).
+                            if (IsExcludedByCode(be)) continue;
                             // The Quartermaster's Tag curates what the desk sees, and the
                             // config decides which way round that works. Opt-out (default):
                             // a tagged container is invisible to the desk. Opt-in: the tag
@@ -483,6 +487,36 @@ namespace Quartermaster
         //     BEBehaviorClutterBookshelf, have no inventory, and were never scanned.)
         // Says nothing about whether the block actually has an inventory — callers that
         // need one still go through GetInventory.
+        // Compiled form of config.ExcludedBlockCodes, built once on first use.
+        private static Regex[] excludedCodePatterns;
+
+        // Matches a block entity against the configured code patterns ("*barrelrack*").
+        // Kept separate from IsScannableKind because that one is about kinds the mod itself
+        // knows are unsafe, while this is the server admin's own list.
+        private static bool IsExcludedByCode(BlockEntity be)
+        {
+            string[] patterns = config.ExcludedBlockCodes;
+            if (patterns == null || patterns.Length == 0) return false;
+
+            if (excludedCodePatterns == null || excludedCodePatterns.Length != patterns.Length)
+            {
+                excludedCodePatterns = patterns
+                    .Where(pat => !string.IsNullOrWhiteSpace(pat))
+                    .Select(pat => new Regex(
+                        "^" + string.Join(".*", pat.Trim().Split('*').Select(Regex.Escape)) + "$",
+                        RegexOptions.IgnoreCase | RegexOptions.Compiled))
+                    .ToArray();
+            }
+
+            string code = be.Block?.Code?.ToString();
+            if (string.IsNullOrEmpty(code)) return false;
+
+            foreach (var rx in excludedCodePatterns)
+                if (rx.IsMatch(code)) return true;
+
+            return false;
+        }
+
         private static bool IsScannableKind(BlockEntity be)
         {
             return be != null
@@ -544,7 +578,7 @@ namespace Quartermaster
         public void ToggleTag(IServerPlayer player, BlockPos pos)
         {
             BlockEntity be = player.Entity.World.BlockAccessor.GetBlockEntity(pos);
-            bool scannable = IsScannableKind(be) && GetInventory(be) != null;
+            bool scannable = IsScannableKind(be) && !IsExcludedByCode(be) && GetInventory(be) != null;
             if (!scannable)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup,
@@ -875,9 +909,18 @@ namespace Quartermaster
         }
 
         // Only real storage (chests + trunks); never per-player or display racks/cases.
+        //
+        // retrieveOnly is vanilla's own "you may take from this, but not put into it" flag —
+        // it's what marks the ruin containers found in the world: collapsed chests
+        // (chest-collapsed1..4) and aged baskets (stationarybasket-aged*). Opening one by hand
+        // won't let you store anything in it, so the desk must not either. Without this check
+        // a "Deposit All" could fling your pack into a derelict chest in a ruin two hundred
+        // blocks away and underground — the desk doing something the game itself forbids.
+        // Withdrawing from them is untouched: taking is exactly what retrieveOnly permits,
+        // so ruins stay lootable through the ledger.
         private bool IsStorageContainer(BlockEntity be)
         {
-            return be is BlockEntityGenericTypedContainer gtc && !gtc.isPerPlayer;
+            return be is BlockEntityGenericTypedContainer gtc && !gtc.isPerPlayer && !gtc.retrieveOnly;
         }
 
         // Stores as much of 'stack' as possible into nearby storage containers: tops up
