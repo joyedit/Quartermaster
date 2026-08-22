@@ -10,6 +10,9 @@ All notable changes to Quartermaster are documented here. Newest first.
 ### Added
 - **`ExcludedBlockCodes` config.** Wildcard block codes the desk never scans, matched case-insensitively against the full `domain:path` code (`*` matches any run of characters). Defaults to `["*barrelrack*", "*tunrack*"]`, covering Food Shelves' barrel and tun racks: they hold barrels, so they carry every problem vanilla barrels do — liquids, sealed curing and fermenting recipes — and additionally let the desk pull the barrel itself out of the rack, leaving the rack's liquid in a broken state. Add to the list rather than waiting on a mod update when some other modded container misbehaves; set it to `[]` to scan everything the desk otherwise allows.
 
+### Changed
+- Also verified against Vintage Story 1.22.7 and rebuilt against its assemblies.
+
 ## v1.0.23
 ### Added
 - **Opt-in tag mode.** New config flag `TagOptInMode` (default `false`) flips what the Quartermaster's Tag means. Left alone, nothing changes: the desk scans everything in range and a tag *hides* a container, exactly as before. Set it to `true` and the desk starts out seeing nothing — a tag is what *puts* a container on the ledger, so you can point the desk at a handful of chosen chests and leave everything else off it. Same tag item, same sneak + right-click, same through-wall label (now reading "Included" rather than "Excluded").
